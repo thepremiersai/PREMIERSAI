@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { User } from "../types";
 import { SUPPORTED_LANGUAGES } from "../lib/languages";
-import { Globe, Menu, X, Sun, Moon, LogIn, UserPlus, LayoutDashboard, LogOut, ShieldAlert, ShoppingBag } from "lucide-react";
+import { Globe, Menu, X, Sun, Moon, LogIn, UserPlus, LayoutDashboard, LogOut, ShieldAlert, ShoppingBag, Sparkles } from "lucide-react";
 
 interface NavbarProps {
   user: User | null;
@@ -63,7 +63,7 @@ export function Navbar({
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+        <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-gray-300">
           <button
             onClick={() => handleNavClick("about")}
             className="hover:text-white transition-colors cursor-pointer py-1"

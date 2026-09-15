@@ -156,7 +156,7 @@ export function HeroSection({
             onClick={onExploreCapabilities}
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#2e2e44] bg-[#14141f]/90 hover:bg-[#1c1c2b] text-gray-200 hover:text-white text-base font-semibold btn-animated-pill min-h-[48px] cursor-pointer backdrop-blur"
           >
-            Explore AI Capabilities
+            Explore Capabilities
           </button>
         </div>
 

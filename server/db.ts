@@ -420,6 +420,207 @@ export function initDatabase() {
       storage_bytes INTEGER DEFAULT 0,
       updated_at INTEGER NOT NULL
     );
+
+    -- 1-50: Advanced Personalization Profiles
+    CREATE TABLE IF NOT EXISTS enterprise_profiles (
+      user_id TEXT PRIMARY KEY,
+      density TEXT DEFAULT 'medium',
+      creativity REAL DEFAULT 0.7,
+      personality TEXT DEFAULT 'analytical',
+      work_mode TEXT DEFAULT 'general',
+      shortcuts_json TEXT DEFAULT '[]',
+      widgets_json TEXT DEFAULT '[]',
+      streaks_count INTEGER DEFAULT 1,
+      productivity_score INTEGER DEFAULT 88,
+      badges_json TEXT DEFAULT '[]',
+      quiet_mode INTEGER DEFAULT 0,
+      workspace_theme TEXT DEFAULT 'neon-cyber',
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 51-100: AI Workflows & Pipelines
+    CREATE TABLE IF NOT EXISTS enterprise_workflows (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      nodes_json TEXT NOT NULL DEFAULT '[]',
+      edges_json TEXT NOT NULL DEFAULT '[]',
+      variables_json TEXT DEFAULT '{}',
+      is_scheduled INTEGER DEFAULT 0,
+      schedule_cron TEXT,
+      status TEXT DEFAULT 'active',
+      version INTEGER DEFAULT 1,
+      cost_tokens INTEGER DEFAULT 0,
+      success_rate REAL DEFAULT 100.0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 51-100: Workflow Execution History & Logs
+    CREATE TABLE IF NOT EXISTS enterprise_workflow_runs (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      logs_json TEXT NOT NULL DEFAULT '[]',
+      tokens_used INTEGER DEFAULT 0,
+      duration_ms INTEGER DEFAULT 0,
+      output_json TEXT,
+      created_at INTEGER NOT NULL
+    );
+
+    -- 801-850: Autonomous AI Agents
+    CREATE TABLE IF NOT EXISTS enterprise_agents (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      system_prompt TEXT NOT NULL,
+      tools_json TEXT DEFAULT '[]',
+      memory_json TEXT DEFAULT '{}',
+      budget_tokens INTEGER DEFAULT 100000,
+      status TEXT DEFAULT 'idle',
+      version INTEGER DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 801-850: Agent Execution Runs & Replays
+    CREATE TABLE IF NOT EXISTS enterprise_agent_runs (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      actions_log_json TEXT NOT NULL DEFAULT '[]',
+      result TEXT,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
+    -- 251-300: Enterprise Productivity & Tasks
+    CREATE TABLE IF NOT EXISTS enterprise_tasks (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT DEFAULT 'medium',
+      status TEXT DEFAULT 'inbox',
+      deadline TEXT,
+      estimated_hours REAL DEFAULT 1.0,
+      dependencies_json TEXT DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 451-500: Business Intelligence KPIs
+    CREATE TABLE IF NOT EXISTS enterprise_kpis (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      current_value REAL NOT NULL,
+      target_value REAL NOT NULL,
+      unit TEXT DEFAULT '$',
+      history_json TEXT DEFAULT '[]',
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 501-550: Marketing Campaigns & Content
+    CREATE TABLE IF NOT EXISTS enterprise_campaigns (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      channel TEXT DEFAULT 'omnichannel',
+      budget REAL DEFAULT 0,
+      status TEXT DEFAULT 'active',
+      target_audience TEXT,
+      assets_json TEXT DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 551-600: Customer & CRM Records
+    CREATE TABLE IF NOT EXISTS enterprise_crm_records (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT DEFAULT 'customer',
+      name TEXT NOT NULL,
+      email TEXT,
+      company TEXT,
+      status TEXT DEFAULT 'active',
+      sentiment_score REAL DEFAULT 85.0,
+      health_score REAL DEFAULT 90.0,
+      history_json TEXT DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 601-650: Collaboration & Shared Workspaces
+    CREATE TABLE IF NOT EXISTS enterprise_team_workspaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      members_json TEXT DEFAULT '[]',
+      announcements_json TEXT DEFAULT '[]',
+      activity_json TEXT DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 651-700: Security & API Key Management
+    CREATE TABLE IF NOT EXISTS enterprise_security_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      key_hash TEXT NOT NULL,
+      permissions_json TEXT DEFAULT '["read", "write"]',
+      rate_limit_rpm INTEGER DEFAULT 60,
+      expires_at INTEGER,
+      last_used_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+
+    -- 851-900: Data & Automation Pipelines
+    CREATE TABLE IF NOT EXISTS enterprise_data_pipelines (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      source_type TEXT DEFAULT 'csv',
+      transformation_rules_json TEXT DEFAULT '[]',
+      last_run_at INTEGER,
+      status TEXT DEFAULT 'idle',
+      schema_json TEXT DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    );
+
+    -- 901-950: Communication & Content Drafts
+    CREATE TABLE IF NOT EXISTS enterprise_content_drafts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      type TEXT DEFAULT 'email',
+      content TEXT NOT NULL,
+      tone TEXT DEFAULT 'Professional',
+      clarity_score INTEGER DEFAULT 95,
+      tags_json TEXT DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- 951-1000: Custom Commands & Tool Extensions
+    CREATE TABLE IF NOT EXISTS enterprise_custom_commands (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      command TEXT NOT NULL,
+      description TEXT,
+      prompt_template TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      is_public INTEGER DEFAULT 1,
+      usage_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    );
   `);
 
   // Run backward-compatible column migrations
@@ -435,6 +636,7 @@ export function initDatabase() {
     "ALTER TABLE chat_messages ADD COLUMN version INTEGER DEFAULT 1;",
     "ALTER TABLE chat_messages ADD COLUMN previous_versions_json TEXT;",
     "ALTER TABLE chat_messages ADD COLUMN is_saved INTEGER DEFAULT 0;",
+    "ALTER TABLE chat_messages ADD COLUMN sources_json TEXT;",
     "ALTER TABLE users ADD COLUMN suspended INTEGER DEFAULT 0;",
     "ALTER TABLE users ADD COLUMN permissions_json TEXT;",
     "ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0;",

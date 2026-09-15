@@ -38,6 +38,10 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  Compass,
+  SearchCheck,
+  Link2,
+  BookOpen,
 } from "lucide-react";
 
 function WebsiteSandboxCard({ html }: { html: string }) {
@@ -313,6 +317,11 @@ export function ChatDashboard({
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [langPickerOpen, setLangPickerOpen] = useState(false);
 
+  // Search & research intelligence controls
+  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
+  const [deepResearchMode, setDeepResearchMode] = useState(false);
+  const [aiStatusMessage, setAiStatusMessage] = useState("AI is reasoning...");
+
   // Input & attachments
   const [inputText, setInputText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -350,7 +359,7 @@ export function ChatDashboard({
     const defaultId = "chat_" + Date.now();
     const defaultSession: ChatSession = {
       id: defaultId,
-      title: "Welcome to PREMIERS AI",
+      title: "Welcome to NEXUS AI",
       pinned: true,
       createdAt: Date.now(),
     };
@@ -361,7 +370,7 @@ export function ChatDashboard({
         {
           id: "msg_welcome",
           role: "assistant",
-          content: `👋 **Welcome to PREMIERS AI!**\n\nI am your universal multilingual AI assistant. You can speak to me in **English**, **Urdu (اردو)**, **Roman Urdu**, **Arabic (العربية)**, **Persian**, **Hindi**, **French**, **Spanish**, **Chinese**, or any other world language.\n\n* **Try asking:** *"Mujhe ek technology company ke liye modern logo ka concept do"* or *"مصنوعی ذہانت کے اہم فوائد کیا ہیں؟"*\n* **Upload an image or document** using the 📎 paperclip button for visual vision inspection.\n* Ask for **logos, YouTube thumbnails, posters, code, or marketing plans** in any language.\n* Use the **Image AI Studio** (top bar) to design and enhance graphics with one click!`,
+          content: `👋 **Welcome to NEXUS AI!**\n\nI am your universal multilingual AI intelligence engine with live web grounding. You can converse with me in **English**, **Urdu (اردو)**, **Roman Urdu**, **Arabic (العربية)**, **Persian**, **Hindi**, **French**, **Spanish**, **Chinese**, or any other world language.\n\n* **Real-Time Web Search:** Live Google Search citations and up-to-the-minute web information enabled by default.\n* **Creative Generation:** Request custom logos, esports graphics, YouTube thumbnails, and marketing artwork.\n* **Interactive Web Apps:** Ask me to build web applications, calculators, or dashboards to get live interactive sandboxes with full source code.\n* **Multimodal Vision:** Attach images or documents using the 📎 paperclip for deep visual analysis.`,
           timestamp: Date.now(),
           detectedLanguage: "English & Multilingual",
           isRTL: false,
@@ -638,118 +647,212 @@ export function ChatDashboard({
     // Set abort controller for Stop Generation
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    setAiStatusMessage(webSearchEnabled ? "Searching web & analyzing..." : "AI is reasoning...");
+
+    // Creative visual & website code detection
+    const creativeReq = detectCreativeIntent(trimmed);
+    let generatedImage: string | null = null;
+    if (creativeReq) {
+      generatedImage = generateCreativeGraphic({
+        title: creativeReq.title,
+        subtitle: creativeReq.subtitle,
+        category: creativeReq.category,
+        theme: creativeReq.theme,
+      });
+    }
+
+    const websiteReq = detectWebsiteIntent(trimmed);
+    const websiteCode = websiteReq ? websiteReq.htmlCode : null;
+
+    // Create streaming assistant placeholder message
+    const assistantMsgId = "msg_asst_" + (Date.now() + 1);
+    const placeholderAssistantMsg: Message = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      timestamp: Date.now(),
+      isStreaming: true,
+      isRTL: false,
+      images: generatedImage ? [generatedImage] : [],
+      websiteHtml: websiteCode || undefined,
+    };
+
+    // Immediately display assistant bubble in streaming state
+    const streamingList = [...updatedCurrentMessages, placeholderAssistantMsg];
+    setMessagesMap({
+      ...messagesMap,
+      [activeSessionId]: streamingList,
+    });
+
+    let accumulatedText = "";
+    let accumulatedSources: any[] = [];
+    let accumulatedQueries: string[] = [];
+    let detectedLang = "Multilingual";
+    let isRtl = false;
 
     try {
-      // 1. Intelligent Sense Engine for Creative Visuals (Logos, Free Fire, YouTube, etc.)
-      const creativeReq = detectCreativeIntent(trimmed);
-      let generatedImage: string | null = null;
-      if (creativeReq) {
-        generatedImage = generateCreativeGraphic({
-          title: creativeReq.title,
-          subtitle: creativeReq.subtitle,
-          category: creativeReq.category,
-          theme: creativeReq.theme,
-        });
-      }
-
-      // 2. Intelligent Sense Engine for Dynamic Interactive Websites
-      const websiteReq = detectWebsiteIntent(trimmed);
-      const websiteCode = websiteReq ? websiteReq.htmlCode : null;
-
-      // 3. Call backend /api/chat with Gemini & Multilingual cascade
       const token = localStorage.getItem("premiers_auth_token");
-      const response = await fetch("/api/chat", {
+      
+      // Attempt SSE streaming first
+      const streamResponse = await fetch("/api/chat/stream", {
         method: "POST",
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           sessionId: activeSessionId,
           message: trimmed,
-          conversationHistory: updatedCurrentMessages.slice(-8).map((m) => ({
+          conversationHistory: updatedCurrentMessages.slice(-10).map((m) => ({
             role: m.role,
             content: m.content,
           })),
           attachments: effectiveAttachments,
           targetLanguage: selectedLanguage,
+          webSearch: webSearchEnabled,
+          deepResearch: deepResearchMode,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      if (streamResponse.ok && streamResponse.body) {
+        const reader = streamResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6).trim();
+              if (!dataStr) continue;
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.type === "chunk" && parsed.text) {
+                  accumulatedText += parsed.text;
+                  setMessagesMap((prev) => {
+                    const current = prev[activeSessionId] || [];
+                    return {
+                      ...prev,
+                      [activeSessionId]: current.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, content: accumulatedText, isStreaming: true }
+                          : m
+                      ),
+                    };
+                  });
+                } else if (parsed.type === "status" && parsed.message) {
+                  setAiStatusMessage(parsed.message);
+                } else if (parsed.type === "sources") {
+                  if (parsed.sources && parsed.sources.length > 0) {
+                    accumulatedSources = parsed.sources;
+                  }
+                  if (parsed.searchQueries && parsed.searchQueries.length > 0) {
+                    accumulatedQueries = parsed.searchQueries;
+                  }
+                  setMessagesMap((prev) => {
+                    const current = prev[activeSessionId] || [];
+                    return {
+                      ...prev,
+                      [activeSessionId]: current.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, sources: accumulatedSources, searchQueries: accumulatedQueries }
+                          : m
+                      ),
+                    };
+                  });
+                } else if (parsed.type === "meta") {
+                  if (parsed.detectedLanguage) detectedLang = parsed.detectedLanguage;
+                  if (typeof parsed.isRTL === "boolean") isRtl = parsed.isRTL;
+                } else if (parsed.type === "done") {
+                  if (parsed.content && !accumulatedText) {
+                    accumulatedText = parsed.content;
+                  }
+                  if (parsed.detectedLanguage) detectedLang = parsed.detectedLanguage;
+                  if (typeof parsed.isRTL === "boolean") isRtl = parsed.isRTL;
+                  if (parsed.sources && parsed.sources.length > 0) {
+                    accumulatedSources = parsed.sources;
+                  }
+                  if (parsed.searchQueries && parsed.searchQueries.length > 0) {
+                    accumulatedQueries = parsed.searchQueries;
+                  }
+                }
+              } catch {
+                // Ignore parse errors on partial frames
+              }
+            }
+          }
+        }
+      } else {
+        // Fallback to standard /api/chat if streaming endpoint returned error
+        const fallbackRes = await fetch("/api/chat", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            message: trimmed,
+            conversationHistory: updatedCurrentMessages.slice(-8).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+            attachments: effectiveAttachments,
+            targetLanguage: selectedLanguage,
+            webSearch: webSearchEnabled,
+          }),
+        });
+
+        if (!fallbackRes.ok) {
+          const errData = await fallbackRes.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP error ${fallbackRes.status}`);
+        }
+
+        const fallbackData = await fallbackRes.json();
+        accumulatedText = fallbackData.content || "I have received your query.";
+        detectedLang = fallbackData.detectedLanguage || "Multilingual";
+        isRtl = fallbackData.isRTL ?? isTextRTL(accumulatedText);
+        if (fallbackData.sources) accumulatedSources = fallbackData.sources;
+        if (fallbackData.searchQueries) accumulatedQueries = fallbackData.searchQueries;
       }
 
-      const data = await response.json();
-
-      // Synthesize intelligent, contextual description if creative or website was requested
-      let assistantContent = data.content || "I have received your request.";
-      if (creativeReq) {
-        const themeLabel =
-          creativeReq.theme === "car"
-            ? "🏎️ Aerodynamic Supercar High-Definition Render"
-            : creativeReq.theme === "landscape"
-            ? "🌄 Cinematic Alpine Sunset Landscape Artwork"
-            : creativeReq.theme === "cyber_city"
-            ? "🌃 Cyberpunk Metropolis 2099 Skyline"
-            : creativeReq.theme === "space"
-            ? "🪐 Deep Space Odyssey & Cosmic Nebula"
-            : creativeReq.theme === "animal"
-            ? "🦁 Majestic Wildlife Artwork"
-            : creativeReq.theme === "anime"
-            ? "⚔️ Manga & Anime Cyber Character Art"
-            : creativeReq.theme === "architecture"
-            ? "🏛️ Modern Luxury Architectural Design"
-            : creativeReq.theme === "food"
-            ? "☕ Artisanal Gourmet Culinary Visual"
-            : creativeReq.theme === "abstract"
-            ? "🔮 Prismatic 3D Holographic Geometry"
-            : creativeReq.theme === "company_logo"
-            ? "🏢 Modern Corporate Brand Logo"
-            : creativeReq.theme === "fitness"
-            ? "🏋️ Elite Fitness & Athletic Brand"
-            : creativeReq.theme === "crypto"
-            ? "⛓️ Web3 & Crypto Protocol Identity"
-            : creativeReq.theme === "medical"
-            ? "🏥 Modern Healthcare & Medical Clinic"
-            : creativeReq.theme === "robotics"
-            ? "🤖 Cybernetic Robotics & AI Core"
-            : creativeReq.theme === "fantasy"
-            ? "🏰 Epic Fantasy & Mythic Artwork"
-            : creativeReq.theme === "portrait"
-            ? "👤 Stylized Character Portrait"
-            : creativeReq.theme === "universal"
-            ? "🌌 Universal Creative Artwork"
-            : creativeReq.theme === "luxury"
-            ? "👑 Royal Luxury Gold Heritage Crest"
-            : creativeReq.theme === "youtube"
-            ? "🔴 YouTube Creator Studio Brand Identity"
-            : creativeReq.theme === "cyber_gaming"
-            ? "⚡ Cybernetic Esports Clan Crest"
-            : creativeReq.theme === "free_fire"
-            ? "🔥 Championship Esports Mascot Emblem"
-            : "🎨 High-Resolution Visual Artwork";
-
-        assistantContent = `### ${themeLabel}: ${creativeReq.title}\n\nI have created your high-definition visual asset with custom geometry, atmospheric lighting, and composition:\n\n- **Subject / Entity**: \`${creativeReq.title}\`\n- **Theme Style**: ${creativeReq.theme.replace(/_/g, " ").toUpperCase()}\n- **Asset Category**: ${creativeReq.category.toUpperCase()}\n- **Subtitle Tag**: *${creativeReq.subtitle}*\n- **Visual Direction**: ${creativeReq.promptDescription}\n\n*Your asset is rendered below in high definition. Click **Download PNG** below to save the file:*`;
-      } else if (websiteReq) {
-        assistantContent = `### 💻 Full-Stack Web Development: ${websiteReq.title}\n\nI have started coding and engineered a full, production-ready interactive web application for **${websiteReq.title}** featuring dynamic state management, search/category filtering, modal dialogues, shopping cart/booking calculations, and responsive mobile-first layouts.\n\n#### 📦 Complete Generated Source Code (\`index.html\`):\n\`\`\`html\n${websiteReq.htmlCode}\n\`\`\`\n\n---\n⚡ **Live Sandbox Online:**\nYou can preview and interact with the live functional app directly below in the interactive sandbox, test the buttons, modals, and filters, or switch tabs to view and copy the full source code!`;
+      // If creative graphic or dynamic website was generated, enrich content if text is brief
+      let finalContent = accumulatedText;
+      if (creativeReq && !accumulatedText.includes(creativeReq.title)) {
+        finalContent = `### 🎨 ${creativeReq.title}\n\n${accumulatedText}\n\n*Your custom creative visual asset is rendered below. Click **Download PNG** to save:*`;
+      } else if (websiteReq && !accumulatedText.includes("Live Sandbox Online")) {
+        finalContent = `### 💻 Full-Stack Interactive Web App: ${websiteReq.title}\n\n${accumulatedText}\n\n---\n⚡ **Interactive Live Preview & Code:**\nYou can test the functional application directly below or switch tabs to view the complete source code.`;
       }
 
-      const assistantMsg: Message = {
-        id: data.messageId || "msg_" + (Date.now() + 1),
+      if (!finalContent.trim()) {
+        finalContent = "I have processed your request. How else can I assist you today?";
+      }
+
+      // Finalize assistant message
+      const finalizedAssistantMsg: Message = {
+        id: assistantMsgId,
         role: "assistant",
-        content: assistantContent,
+        content: finalContent,
         timestamp: Date.now(),
-        detectedLanguage: data.detectedLanguage || "Multilingual",
-        languageCode: data.languageCode || "en",
-        isRTL: data.isRTL ?? false,
-        images: generatedImage ? [generatedImage] : data.images || [],
-        websiteHtml: websiteCode || data.websiteHtml || undefined,
+        isStreaming: false,
+        detectedLanguage: detectedLang,
+        isRTL: isRtl,
+        sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
+        searchQueries: accumulatedQueries.length > 0 ? accumulatedQueries : undefined,
+        images: generatedImage ? [generatedImage] : [],
+        websiteHtml: websiteCode || undefined,
       };
 
-      const finalMessages = [...updatedCurrentMessages, assistantMsg];
+      const finalMessages = [...updatedCurrentMessages, finalizedAssistantMsg];
       const finalMap = {
         ...messagesMap,
         [activeSessionId]: finalMessages,
@@ -758,13 +861,14 @@ export function ChatDashboard({
       saveChatsToStorage(updatedSessions, finalMap);
     } catch (err: any) {
       if (err?.name === "AbortError") {
-        // User deliberately aborted generation
         const stoppedMsg: Message = {
-          id: "msg_stopped_" + Date.now(),
+          id: assistantMsgId,
           role: "assistant",
-          content: "*(Generation stopped by user)*",
+          content: accumulatedText ? accumulatedText + "\n\n*(Generation stopped by user)*" : "*(Generation stopped by user)*",
           timestamp: Date.now(),
+          isStreaming: false,
           isRTL: false,
+          sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
         };
         const finalMessages = [...updatedCurrentMessages, stoppedMsg];
         const finalMap = {
@@ -778,12 +882,13 @@ export function ChatDashboard({
 
       console.error("Chat communication error:", err);
       const fallbackMsg: Message = {
-        id: "msg_err_" + Date.now(),
+        id: assistantMsgId,
         role: "assistant",
-        content: "⚠️ I encountered a temporary network or server issue. Please click **Retry** below to resend your query.",
+        content: accumulatedText || "⚠️ I encountered a temporary connection issue. Please click **Retry** below to resend your query.",
         timestamp: Date.now(),
+        isStreaming: false,
         isRTL: false,
-        isError: true,
+        isError: !accumulatedText,
       };
       const finalMessages = [...updatedCurrentMessages, fallbackMsg];
       const finalMap = {
@@ -1079,28 +1184,61 @@ export function ChatDashboard({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm sm:text-base font-bold text-white truncate max-w-[180px] sm:max-w-md">
-                  {sessions.find((s) => s.id === activeSessionId)?.title || "PREMIERS AI"}
+                  {sessions.find((s) => s.id === activeSessionId)?.title || "Universal Intelligence"}
                 </h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#00d4a0]/10 text-[#00d4a0] border border-[#00d4a0]/30 uppercase tracking-wider">
-                  Universal AI
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wider">
+                  Live Grounding
                 </span>
               </div>
               <p className="text-[11px] text-gray-400 hidden sm:block">
-                Powered by Gemini Multi-Engine with Multilingual Language Cascade
+                Powered by Gemini 2.5 Multi-Engine with Real-Time Google Search
               </p>
             </div>
           </div>
 
           {/* Header Action Buttons */}
           <div className="flex items-center gap-2">
+            {/* Live Web Search Toggle */}
+            <button
+              type="button"
+              onClick={() => setWebSearchEnabled((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
+                webSearchEnabled
+                  ? "bg-cyan-950/40 border-cyan-500/50 text-cyan-300 shadow-cyan-500/10"
+                  : "bg-[#141420] border-[#2b2b3e] text-gray-400 hover:text-gray-200"
+              }`}
+              title={webSearchEnabled ? "Web Search Active (Grounding with Google Search)" : "Enable Web Search"}
+            >
+              <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-cyan-400 animate-pulse" : "text-gray-500"}`} />
+              <span className="hidden sm:inline">Web Search</span>
+              <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${webSearchEnabled ? "bg-cyan-500/20 text-cyan-300" : "bg-gray-800 text-gray-500"}`}>
+                {webSearchEnabled ? "ON" : "OFF"}
+              </span>
+            </button>
+
+            {/* Deep Research Toggle */}
+            <button
+              type="button"
+              onClick={() => setDeepResearchMode((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
+                deepResearchMode
+                  ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-300 shadow-indigo-500/10"
+                  : "bg-[#141420] border-[#2b2b3e] text-gray-400 hover:text-gray-200"
+              }`}
+              title={deepResearchMode ? "Deep Research Active (Exhaustive Analysis)" : "Enable Deep Research"}
+            >
+              <Compass className={`w-3.5 h-3.5 ${deepResearchMode ? "text-indigo-400" : "text-gray-500"}`} />
+              <span className="hidden sm:inline">Deep Research</span>
+            </button>
+
             {/* Image AI Studio Modal Launcher */}
             <button
               type="button"
               onClick={() => setImageStudioOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#00d4a0]/15 to-[#a855f7]/15 border border-[#00d4a0]/40 hover:border-[#00d4a0] text-xs font-bold text-white transition-all cursor-pointer shadow-sm btn-glow-pulse active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/15 to-indigo-500/15 border border-teal-500/40 hover:border-teal-400 text-xs font-bold text-white transition-all cursor-pointer shadow-sm active:scale-95"
               title="Open Image AI Studio"
             >
-              <Wand2 className="w-3.5 h-3.5 text-[#00d4a0]" />
+              <Wand2 className="w-3.5 h-3.5 text-teal-400" />
               <span className="hidden sm:inline">Image AI Studio</span>
             </button>
 
@@ -1193,27 +1331,27 @@ export function ChatDashboard({
         >
           {currentMessages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400 max-w-lg mx-auto">
-              <div className="w-14 h-14 rounded-2xl bg-[#00d4a0]/10 border border-[#00d4a0]/30 flex items-center justify-center text-[#00d4a0] text-3xl mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-3xl mb-4 shadow-lg shadow-cyan-500/10">
                 ✦
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Ask PREMIERS Anything</h3>
+              <h3 className="text-lg font-bold text-white mb-2">How can NEXUS AI assist you?</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-6">
-                Type in English, Urdu (اردو), Roman Urdu, Arabic, Persian, Hindi, French, Spanish, or Chinese. Attach images for visual inspection, request logos, banners, posters, and code.
+                Type in English, Urdu (اردو), Roman Urdu, Arabic, or any world language. Live Google Search grounding, image vision analysis, interactive web apps, and creative design engines are active.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 <button
                   onClick={() => executeSendMessage("Aap mujhe ek modern technology logo ka concept bana kar dein")}
-                  className="p-3 rounded-xl border border-[#242436] bg-[#141420] text-xs text-gray-300 hover:text-white hover:border-[#00d4a0]/50 text-left cursor-pointer transition-all"
+                  className="p-3 rounded-xl border border-[#242436] bg-[#141420] text-xs text-gray-300 hover:text-white hover:border-cyan-500/50 text-left cursor-pointer transition-all"
                 >
-                  <span className="text-[#00d4a0] font-bold block mb-1">Roman Urdu Prompt</span>
+                  <span className="text-cyan-400 font-bold block mb-1">Roman Urdu Prompt</span>
                   "Aap mujhe modern technology logo ka concept dein"
                 </button>
                 <button
                   onClick={() => executeSendMessage("مصنوعی ذہانت کے بارے میں جامع خلاصہ پیش کریں")}
-                  className="p-3 rounded-xl border border-[#242436] bg-[#141420] text-xs text-gray-300 hover:text-white hover:border-[#00d4a0]/50 text-right cursor-pointer transition-all font-urdu"
+                  className="p-3 rounded-xl border border-[#242436] bg-[#141420] text-xs text-gray-300 hover:text-white hover:border-cyan-500/50 text-right cursor-pointer transition-all font-urdu"
                   dir="rtl"
                 >
-                  <span className="text-[#00d4a0] font-bold block mb-1">اردو سوال</span>
+                  <span className="text-cyan-400 font-bold block mb-1">اردو سوال</span>
                   "مصنوعی ذہانت کے بارے میں جامع خلاصہ پیش کریں"
                 </button>
               </div>
@@ -1235,11 +1373,11 @@ export function ChatDashboard({
                   <div
                     className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 shadow-sm ${
                       isAssistant
-                        ? "bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] text-black"
+                        ? "bg-gradient-to-br from-indigo-500 via-cyan-500 to-teal-400 text-black shadow-cyan-500/20"
                         : "bg-[#28283c] text-white"
                     }`}
                   >
-                    {isAssistant ? "P" : user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                    {isAssistant ? <Sparkles className="w-4 h-4 text-black" /> : user.name ? user.name.charAt(0).toUpperCase() : "U"}
                   </div>
 
                   {/* Bubble Content */}
@@ -1249,7 +1387,7 @@ export function ChatDashboard({
                         ? msg.isError
                           ? "bg-red-950/30 border border-red-500/40 text-red-200"
                           : "bg-[#141420] border border-[#242436] text-gray-200"
-                        : "bg-[#00d4a0]/15 border border-[#00d4a0]/30 text-white"
+                        : "bg-cyan-950/30 border border-cyan-500/30 text-white"
                     }`}
                   >
                     {/* Assistant Bubble Meta Bar: Language badge, timestamp, copy button */}
@@ -1257,9 +1395,9 @@ export function ChatDashboard({
                       <div className="flex items-center gap-2">
                         {isAssistant ? (
                           <>
-                            <span className="font-semibold text-white">PREMIERS AI</span>
+                            <span className="font-semibold text-white">NEXUS AI</span>
                             {msg.detectedLanguage && (
-                              <span className="flex items-center gap-1 text-[#00d4a0]">
+                              <span className="flex items-center gap-1 text-cyan-400">
                                 <Globe className="w-3 h-3" />
                                 <span>{msg.detectedLanguage}</span>
                               </span>
@@ -1282,8 +1420,8 @@ export function ChatDashboard({
                           >
                             {copiedMessageId === msg.id ? (
                               <>
-                                <Check className="w-3 h-3 text-[#00d4a0]" />
-                                <span className="text-[#00d4a0]">Copied!</span>
+                                <Check className="w-3 h-3 text-cyan-400" />
+                                <span className="text-cyan-400">Copied!</span>
                               </>
                             ) : (
                               <>
@@ -1296,8 +1434,57 @@ export function ChatDashboard({
                       </div>
                     </div>
 
+                    {/* Search query tag if real-time web search was conducted */}
+                    {msg.searchQueries && msg.searchQueries.length > 0 && (
+                      <div className="mb-3 px-3 py-1.5 rounded-lg bg-cyan-950/30 border border-cyan-500/20 text-xs text-cyan-300 flex items-center gap-2">
+                        <SearchCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span className="truncate">
+                          <strong>Grounded with Google Search:</strong> {msg.searchQueries.join(", ")}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Main Markdown & Code Body */}
-                    <MarkdownRenderer content={msg.content} isRTL={isRtl} />
+                    <div className="relative">
+                      <MarkdownRenderer content={msg.content} isRTL={isRtl} />
+                      {msg.isStreaming && (
+                        <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle rounded-sm" />
+                      )}
+                    </div>
+
+                    {/* Sources & Citations with clickable links */}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-[#222234] space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-300">
+                          <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Sources Referenced ({msg.sources.length})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {msg.sources.map((src, i) => {
+                            let domain = "source";
+                            try {
+                              domain = new URL(src.url).hostname.replace("www.", "");
+                            } catch {}
+                            return (
+                              <a
+                                key={i}
+                                href={src.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#181828] hover:bg-[#22223a] border border-[#2b2b40] text-xs text-gray-300 hover:text-cyan-300 transition-colors max-w-xs truncate group shadow-sm"
+                                title={src.title || src.url}
+                              >
+                                <span className="w-4 h-4 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 text-[10px] flex items-center justify-center font-mono shrink-0">
+                                  {i + 1}
+                                </span>
+                                <span className="truncate font-medium">{src.title || domain}</span>
+                                <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-cyan-400 shrink-0 ml-0.5" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Retry button if this message encountered an error */}
                     {msg.isError && (
@@ -1371,23 +1558,23 @@ export function ChatDashboard({
           {/* Colorful AI Thinking / Loading Animation Bubble */}
           {isAiThinking && (
             <div className="flex gap-3 max-w-3xl mr-auto animate-in fade-in-50 duration-200">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] flex items-center justify-center text-black font-extrabold text-xs shrink-0 shadow-sm">
-                P
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-cyan-500 to-teal-400 flex items-center justify-center text-black font-extrabold text-xs shrink-0 shadow-sm shadow-cyan-500/20">
+                <Sparkles className="w-4 h-4 text-black" />
               </div>
               <div className="rounded-2xl p-4 bg-[#141420] border border-[#242436] space-y-2.5 max-w-sm">
                 {/* Gradient Shimmer Bar */}
                 <div className="w-48 h-2 rounded-full thinking-glow overflow-hidden relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent thinking-sweep" />
                 </div>
-                {/* Pulsating Dots */}
+                {/* Pulsating Dots & Status */}
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
                     <div className="flex gap-1 items-center">
-                      <span className="w-2 h-2 rounded-full bg-[#00d4a0] thinking-dot-1" />
-                      <span className="w-2 h-2 rounded-full bg-[#00b8d4] thinking-dot-2" />
-                      <span className="w-2 h-2 rounded-full bg-purple-400 thinking-dot-3" />
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 thinking-dot-1" />
+                      <span className="w-2 h-2 rounded-full bg-teal-400 thinking-dot-2" />
+                      <span className="w-2 h-2 rounded-full bg-indigo-400 thinking-dot-3" />
                     </div>
-                    <span>PREMIERS AI is composing…</span>
+                    <span className="truncate">{aiStatusMessage}</span>
                   </div>
 
                   {/* Stop Generation Button on thinking bubble */}

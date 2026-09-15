@@ -23,6 +23,7 @@ import { mediaRouter } from "./server/routes/media.routes";
 import { codingRouter } from "./server/routes/coding.routes";
 import { researchRouter } from "./server/routes/research.routes";
 import { workspaceRouter } from "./server/routes/workspace.routes";
+import { enterpriseRouter } from "./server/routes/enterprise.routes";
 
 const app = express();
 const PORT = 3000;
@@ -47,9 +48,11 @@ app.use((_req, res, next) => {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// UTF-8 JSON response headers middleware for API routes
-app.use("/api", (_req, res, next) => {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+// UTF-8 JSON response headers middleware for API routes (except event streams)
+app.use("/api", (req, res, next) => {
+  if (!req.path.includes("/stream") && !req.headers.accept?.includes("text/event-stream")) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+  }
   next();
 });
 
@@ -111,6 +114,7 @@ app.use("/api/media", mediaRouter);
 app.use("/api/coding", codingRouter);
 app.use("/api/research", researchRouter);
 app.use("/api/workspace", workspaceRouter);
+app.use("/api/enterprise", enterpriseRouter);
 
 // Start server with Vite middleware in development or static dist in production
 async function startServer() {

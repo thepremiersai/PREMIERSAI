@@ -1,6 +1,6 @@
 {
-  "name": "PREMIERS AI",
-  "description": "The Universal AI Platform with complete responsive design, global multilingual AI support, and creative vision tools.",
+  "name": "NEXUS AI",
+  "description": "Next-generation multimodal intelligence platform with real-time web search grounding, live streaming, and creative design tools.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -20,7 +20,7 @@ interface InitStage {
 
 export function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [displayPercent, setDisplayPercent] = useState<number>(0);
-  const [statusMessage, setStatusMessage] = useState<string>("INITIALIZING PREMIERS AI");
+  const [statusMessage, setStatusMessage] = useState<string>("INITIALIZING CORE INTELLIGENCE");
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isFadingOut, setIsFadingOut] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -385,69 +385,67 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
       {/* Futuristic Corner Precision Reticles */}
       <div
         aria-hidden="true"
-        className="absolute top-6 left-6 text-gray-700/60 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
+        className="absolute top-6 left-6 text-gray-600 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
       >
-        <span className="w-2 h-2 border-t border-l border-[#00d4a0]/40 inline-block" />
-        <span>SYS // PREMIERS.AI.CORE.V3</span>
+        <span className="w-2 h-2 border-t border-l border-indigo-400/40 inline-block" />
+        <span>SYS // UNIVERSAL.CORE.V4</span>
       </div>
       <div
         aria-hidden="true"
-        className="absolute top-6 right-6 text-gray-700/60 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
+        className="absolute top-6 right-6 text-gray-600 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
       >
-        <span>STATUS // {isReady ? "READY" : "LOADING"}</span>
-        <span className="w-2 h-2 border-t border-r border-[#00d4a0]/40 inline-block" />
+        <span>STATUS // {isReady ? "READY" : "CALIBRATING"}</span>
+        <span className="w-2 h-2 border-t border-r border-indigo-400/40 inline-block" />
       </div>
       <div
         aria-hidden="true"
-        className="absolute bottom-6 left-6 text-gray-700/60 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
+        className="absolute bottom-6 left-6 text-gray-600 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
       >
-        <span className="w-2 h-2 border-b border-l border-[#00d4a0]/40 inline-block" />
-        <span>SECURE BOOT // ACTIVE</span>
+        <span className="w-2 h-2 border-b border-l border-indigo-400/40 inline-block" />
+        <span>STREAM ENGINE // ACTIVE</span>
       </div>
       <div
         aria-hidden="true"
-        className="absolute bottom-6 right-6 text-gray-700/60 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
+        className="absolute bottom-6 right-6 text-gray-600 font-mono text-[10px] tracking-widest pointer-events-none hidden sm:flex items-center gap-2"
       >
-        <span>INTELLIGENCE // ONLINE</span>
-        <span className="w-2 h-2 border-b border-r border-[#00d4a0]/40 inline-block" />
+        <span>GROUNDING // LIVE</span>
+        <span className="w-2 h-2 border-b border-r border-indigo-400/40 inline-block" />
       </div>
 
       {/* Main Centered Content Container */}
       <div className="relative z-10 flex flex-col items-center justify-center max-w-lg w-full px-6 text-center">
         {!hasError ? (
           <>
-            {/* 1 & 3: LOGO & BRAND NAME */}
+            {/* LOGO & BRAND NAME */}
             <div className="flex flex-col items-center mb-2 anim-premiers-logo">
               {/* Brand Monogram with Glow Halo */}
               <div className="relative mb-4">
                 <div
                   aria-hidden="true"
-                  className="absolute -inset-2 rounded-2xl bg-gradient-to-r from-[#00d4a0]/30 to-[#00b8d4]/30 blur-lg anim-premiers-glow"
+                  className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-indigo-500/25 via-cyan-500/25 to-teal-500/25 blur-xl anim-premiers-glow"
                 />
-                <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-[#0e1017] via-[#151824] to-[#0a0c13] border border-[#00d4a0]/40 shadow-2xl flex items-center justify-center text-white font-extrabold text-3xl sm:text-4xl tracking-tight">
-                  <span className="bg-gradient-to-br from-white via-[#00d4a0] to-[#00b8d4] bg-clip-text text-transparent">
-                    P
-                  </span>
+                <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-[#12131d] via-[#1a1c2b] to-[#0c0d15] border border-indigo-500/40 shadow-2xl flex items-center justify-center text-white font-extrabold text-3xl sm:text-4xl tracking-tight">
+                  <Sparkles className="w-8 h-8 text-indigo-400" />
                   {/* Micro corner accent */}
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#00d4a0] shadow-sm shadow-[#00d4a0]" />
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400" />
                 </div>
               </div>
 
-              {/* Brand Title: PREMIERS AI */}
+              {/* Brand Title */}
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
-                <span>PREMIERS</span>
-                <span className="text-[#00d4a0]">AI</span>
+                <span className="bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">NEXUS</span>
+                <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI</span>
               </h1>
             </div>
 
-            {/* 4: TAGLINE: WE ARE HERE (Strict requirement - no other tagline) */}
+            {/* TAGLINE */}
             <div className="mb-8 anim-premiers-tagline">
-              <p className="text-xs sm:text-sm font-semibold tracking-[0.34em] text-gray-300 uppercase flex items-center justify-center gap-2">
-                <span className="w-4 sm:w-6 h-px bg-gradient-to-r from-transparent to-[#00d4a0]/60 inline-block" />
-                <span className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
-                  WE ARE HERE
+              <p className="text-xs sm:text-sm font-semibold tracking-[0.25em] text-gray-400 uppercase flex items-center justify-center gap-2">
+                <span className="w-4 sm:w-6 h-px bg-gradient-to-r from-transparent to-indigo-400/60 inline-block" />
+                <span className="text-gray-200">
+                  UNIVERSAL INTELLIGENCE & CREATIVE ENGINE
                 </span>
-                <span className="w-4 sm:w-6 h-px bg-gradient-to-l from-transparent to-[#00d4a0]/60 inline-block" />
+                <span className="w-4 sm:w-6 h-px bg-gradient-to-l from-transparent to-indigo-400/60 inline-block" />
               </p>
             </div>
 

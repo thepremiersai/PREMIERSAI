@@ -20,6 +20,13 @@ export interface GenerateAIOptions {
   topP?: number;
   maxOutputTokens?: number;
   responseMimeType?: string;
+  enableWebSearch?: boolean;
+}
+
+export interface StreamAIOptions extends GenerateAIOptions {
+  onChunk: (text: string) => void;
+  onGrounding?: (groundingData: any) => void;
+  signal?: AbortSignal;
 }
 
 /**
@@ -32,6 +39,103 @@ const CANDIDATE_MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-flash-latest",
 ];
+
+/**
+ * Real-time streaming content generator with Google Search grounding support.
+ * Yields chunks immediately as they arrive from the model.
+ */
+export async function generateAIContentStream(options: StreamAIOptions): Promise<{
+  fullText: string;
+  sources: Array<{ title: string; url: string; domain?: string; snippet?: string }>;
+  searchQueries: string[];
+} | null> {
+  const ai = getGenAI();
+  if (!ai) {
+    return null;
+  }
+
+  const { contents, systemInstruction, temperature = 0.7, topP = 0.95, enableWebSearch, onChunk, onGrounding, signal } = options;
+  const sourcesMap = new Map<string, { title: string; url: string; domain?: string; snippet?: string }>();
+  const searchQueries: string[] = [];
+
+  for (const modelName of CANDIDATE_MODELS) {
+    if (signal?.aborted) break;
+
+    try {
+      const config: any = {
+        ...(systemInstruction ? { systemInstruction } : {}),
+        temperature,
+        topP,
+      };
+
+      if (enableWebSearch) {
+        config.tools = [{ googleSearch: {} }];
+      }
+
+      const stream = await ai.models.generateContentStream({
+        model: modelName,
+        contents,
+        config,
+      });
+
+      let accumulatedText = "";
+
+      for await (const chunk of stream) {
+        if (signal?.aborted) break;
+
+        const chunkText = chunk.text || "";
+        if (chunkText) {
+          accumulatedText += chunkText;
+          onChunk(chunkText);
+        }
+
+        // Extract grounding metadata if Google Search was performed
+        const groundingMeta = chunk.candidates?.[0]?.groundingMetadata;
+        if (groundingMeta) {
+          if (onGrounding) onGrounding(groundingMeta);
+
+          if (Array.isArray(groundingMeta.webSearchQueries)) {
+            for (const q of groundingMeta.webSearchQueries) {
+              if (q && !searchQueries.includes(q)) searchQueries.push(q);
+            }
+          }
+
+          if (Array.isArray(groundingMeta.groundingChunks)) {
+            for (const item of groundingMeta.groundingChunks) {
+              if (item?.web?.uri) {
+                const url = item.web.uri;
+                let domain = "";
+                try {
+                  domain = new URL(url).hostname.replace(/^www\./, "");
+                } catch {
+                  domain = "web";
+                }
+                const title = item.web.title || domain || "Web Source";
+                if (!sourcesMap.has(url)) {
+                  sourcesMap.set(url, { title, url, domain });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (accumulatedText) {
+        return {
+          fullText: accumulatedText,
+          sources: Array.from(sourcesMap.values()),
+          searchQueries,
+        };
+      }
+    } catch (err: any) {
+      if (signal?.aborted) return null;
+      console.log(`[AI Stream] Model ${modelName} stream attempt ended:`, err?.message || String(err));
+      // Attempt next fallback model
+    }
+  }
+
+  return null;
+}
 
 /**
  * Ultra-resilient content generator with automatic model failover,

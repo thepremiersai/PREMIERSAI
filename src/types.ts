@@ -25,6 +25,9 @@ export interface Attachment {
 export interface MessageSource {
   title: string;
   url: string;
+  domain?: string;
+  date?: string;
+  snippet?: string;
 }
 
 export interface Message {
@@ -33,6 +36,8 @@ export interface Message {
   content: string;
   timestamp: number;
   sources?: MessageSource[];
+  searchQueries?: string[];
+  isStreaming?: boolean;
   images?: string[];
   websiteHtml?: string;
   fileTree?: string;

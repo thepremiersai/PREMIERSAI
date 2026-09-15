@@ -125,7 +125,27 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
   if (!ctx) return "";
 
   // 1. Render Specific Theme or Category
-  if (
+  if (category === "logo") {
+    if (theme === "company_logo" || theme === "tech") {
+      drawCompanyLogo(ctx, width, height, title, options.subtitle, palette);
+    } else if (theme === "luxury") {
+      drawLuxuryLogo(ctx, width, height, title, options.subtitle);
+    } else if (theme === "crypto") {
+      drawCryptoBlockchain(ctx, width, height, title, options.subtitle);
+    } else if (theme === "medical") {
+      drawMedicalClinic(ctx, width, height, title, options.subtitle);
+    } else if (theme === "fitness") {
+      drawFitnessGym(ctx, width, height, title, options.subtitle);
+    } else if (theme === "free_fire") {
+      drawFreeFireLogo(ctx, width, height, title, options.subtitle);
+    } else if (theme === "youtube") {
+      drawYouTubeLogo(ctx, width, height, title, options.subtitle);
+    } else if (theme === "cyber_gaming") {
+      drawCyberGamingLogo(ctx, width, height, title, options.subtitle);
+    } else {
+      drawModernBrandLogo(ctx, width, height, title, options.subtitle, palette);
+    }
+  } else if (
     category === "image" ||
     theme === "landscape" ||
     theme === "car" ||
@@ -176,26 +196,6 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
       drawStylizedPortrait(ctx, width, height, title, options.subtitle);
     } else {
       drawUniversalProceduralArt(ctx, width, height, title, options.subtitle, theme, palette);
-    }
-  } else if (category === "logo") {
-    if (theme === "company_logo" || theme === "tech") {
-      drawCompanyLogo(ctx, width, height, title, options.subtitle, palette);
-    } else if (theme === "luxury") {
-      drawLuxuryLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "crypto") {
-      drawCryptoBlockchain(ctx, width, height, title, options.subtitle);
-    } else if (theme === "medical") {
-      drawMedicalClinic(ctx, width, height, title, options.subtitle);
-    } else if (theme === "fitness") {
-      drawFitnessGym(ctx, width, height, title, options.subtitle);
-    } else if (theme === "free_fire") {
-      drawFreeFireLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "youtube") {
-      drawYouTubeLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "cyber_gaming") {
-      drawCyberGamingLogo(ctx, width, height, title, options.subtitle);
-    } else {
-      drawModernBrandLogo(ctx, width, height, title, options.subtitle, palette);
     }
   } else if (category === "thumbnail") {
     drawProThumbnail(ctx, width, height, title, options.subtitle, theme, palette);
