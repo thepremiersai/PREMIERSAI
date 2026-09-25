@@ -3,6 +3,8 @@ import { User, Message, ChatSession, Attachment, PlanId } from "../types";
 import { SUPPORTED_LANGUAGES, isTextRTL } from "../lib/languages";
 import { generateCreativeGraphic, GraphicOptions } from "../lib/creativeGenerator";
 import { detectCreativeIntent, detectWebsiteIntent } from "../lib/promptSenseEngine";
+import { parseVisualIntent } from "../lib/visualIntentEngine";
+import { BrandIdentityCard } from "./BrandIdentityCard";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ImageAiStudioModal } from "./ImageAiStudioModal";
 import {
@@ -42,6 +44,12 @@ import {
   SearchCheck,
   Link2,
   BookOpen,
+  Volume2,
+  VolumeX,
+  Mic,
+  MicOff,
+  BrainCircuit,
+  Loader2,
 } from "lucide-react";
 
 function WebsiteSandboxCard({ html }: { html: string }) {
@@ -332,11 +340,23 @@ export function ChatDashboard({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
+  // AI Voice, Speech & Reasoning States
+  const [isDeepThinking, setIsDeepThinking] = useState(false);
+  const [playingAudioMsgId, setPlayingAudioMsgId] = useState<string | null>(null);
+  const [loadingAudioMsgId, setLoadingAudioMsgId] = useState<string | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+  const [ttsAudioCache, setTtsAudioCache] = useState<Record<string, string>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Load chats on mount
   useEffect(() => {
@@ -359,7 +379,7 @@ export function ChatDashboard({
     const defaultId = "chat_" + Date.now();
     const defaultSession: ChatSession = {
       id: defaultId,
-      title: "Welcome to NEXUS AI",
+      title: "Welcome to PREMIERS AI",
       pinned: true,
       createdAt: Date.now(),
     };
@@ -370,7 +390,7 @@ export function ChatDashboard({
         {
           id: "msg_welcome",
           role: "assistant",
-          content: `👋 **Welcome to NEXUS AI!**\n\nI am your universal multilingual AI intelligence engine with live web grounding. You can converse with me in **English**, **Urdu (اردو)**, **Roman Urdu**, **Arabic (العربية)**, **Persian**, **Hindi**, **French**, **Spanish**, **Chinese**, or any other world language.\n\n* **Real-Time Web Search:** Live Google Search citations and up-to-the-minute web information enabled by default.\n* **Creative Generation:** Request custom logos, esports graphics, YouTube thumbnails, and marketing artwork.\n* **Interactive Web Apps:** Ask me to build web applications, calculators, or dashboards to get live interactive sandboxes with full source code.\n* **Multimodal Vision:** Attach images or documents using the 📎 paperclip for deep visual analysis.`,
+          content: `👋 **Welcome to PREMIERS AI!**\n\nI am your unified universal multimodal intelligence platform with autonomous tool reasoning, real-time web knowledge, and creative graphic design. You can converse with me in **English**, **Urdu (اردو)**, **Roman Urdu**, **Arabic (العربية)**, **Persian**, **Hindi**, **French**, **Spanish**, **Chinese**, or any other world language.\n\n* **Autonomous Web Grounding:** Ask about today's events, latest news, and factual verification.\n* **Creative Visual Intelligence:** Request logos, gaming banners, YouTube thumbnails, wallpapers, and marketing artwork.\n* **Interactive Full-Stack Web Apps:** Ask me to build web applications or tools for instant interactive sandboxes with complete source code.\n* **Multimodal Vision:** Attach photos or documents using the 📎 paperclip for deep visual analysis.`,
           timestamp: Date.now(),
           detectedLanguage: "English & Multilingual",
           isRTL: false,
@@ -563,6 +583,169 @@ export function ChatDashboard({
     }
   };
 
+  // Clean up audio and microphone on unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  // AI Voice Playback (Gemini TTS)
+  const handlePlayAudio = async (msg: Message) => {
+    if (playingAudioMsgId === msg.id) {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      setPlayingAudioMsgId(null);
+      return;
+    }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+      setPlayingAudioMsgId(null);
+    }
+
+    const cachedUrl = ttsAudioCache[msg.id];
+    if (cachedUrl) {
+      const audio = new Audio(cachedUrl);
+      currentAudioRef.current = audio;
+      setPlayingAudioMsgId(msg.id);
+      audio.onended = () => {
+        setPlayingAudioMsgId(null);
+        currentAudioRef.current = null;
+      };
+      audio.onerror = () => {
+        setPlayingAudioMsgId(null);
+        currentAudioRef.current = null;
+      };
+      audio.play().catch(() => setPlayingAudioMsgId(null));
+      return;
+    }
+
+    setLoadingAudioMsgId(msg.id);
+    try {
+      const res = await fetch("/api/chat/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: msg.content.slice(0, 1000), voice: "Kore" }),
+      });
+      const data = await res.json();
+      if (data.audioUrl) {
+        setTtsAudioCache((prev) => ({ ...prev, [msg.id]: data.audioUrl }));
+        const audio = new Audio(data.audioUrl);
+        currentAudioRef.current = audio;
+        setPlayingAudioMsgId(msg.id);
+        audio.onended = () => {
+          setPlayingAudioMsgId(null);
+          currentAudioRef.current = null;
+        };
+        audio.onerror = () => {
+          setPlayingAudioMsgId(null);
+          currentAudioRef.current = null;
+        };
+        audio.play().catch(() => setPlayingAudioMsgId(null));
+      }
+    } catch (err) {
+      console.warn("TTS playback error:", err);
+    } finally {
+      setLoadingAudioMsgId(null);
+    }
+  };
+
+  // AI Voice Dictation (Gemini STT)
+  const handleToggleVoiceRecord = async () => {
+    if (isRecordingVoice) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecordingVoice(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const resultStr = reader.result as string;
+          const base64Data = resultStr.includes(",") ? resultStr.split(",")[1] : resultStr;
+          setIsTranscribing(true);
+          try {
+            const res = await fetch("/api/chat/transcribe", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ audioBase64: base64Data, mimeType: "audio/webm" }),
+            });
+            const data = await res.json();
+            if (data.text) {
+              setInputText((prev) => (prev ? prev + " " + data.text : data.text));
+              if (textareaRef.current) {
+                textareaRef.current.style.height = "auto";
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+              }
+            }
+          } catch (e) {
+            console.warn("Transcription failed:", e);
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecordingVoice(true);
+    } catch (err) {
+      console.warn("Microphone access failed:", err);
+    }
+  };
+
+  // AI Prompt Enhancer
+  const handleEnhancePrompt = async () => {
+    const prompt = inputText.trim();
+    if (!prompt || isEnhancingPrompt) return;
+    setIsEnhancingPrompt(true);
+    try {
+      const res = await fetch("/api/chat/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (data.enhancedPrompt) {
+        setInputText(data.enhancedPrompt);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+        }
+      }
+    } catch (err) {
+      console.warn("Prompt enhance failed:", err);
+    } finally {
+      setIsEnhancingPrompt(false);
+    }
+  };
+
   // Stop Generation
   const handleStopGeneration = () => {
     if (abortControllerRef.current) {
@@ -647,12 +830,50 @@ export function ChatDashboard({
     // Set abort controller for Stop Generation
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    setAiStatusMessage(webSearchEnabled ? "Searching web & analyzing..." : "AI is reasoning...");
 
-    // Creative visual & website code detection
-    const creativeReq = detectCreativeIntent(trimmed);
+    // PART 5 & 6 & 7: Automatic Tool Intelligence Detection
+    const lowerTrimmed = trimmed.toLowerCase();
+    const autoWebSearch =
+      lowerTrimmed.includes("news") ||
+      lowerTrimmed.includes("today") ||
+      lowerTrimmed.includes("latest") ||
+      lowerTrimmed.includes("current") ||
+      lowerTrimmed.includes("stock") ||
+      lowerTrimmed.includes("weather") ||
+      lowerTrimmed.includes("price") ||
+      lowerTrimmed.includes("score") ||
+      lowerTrimmed.includes("who won") ||
+      lowerTrimmed.includes("2025") ||
+      lowerTrimmed.includes("2026") ||
+      lowerTrimmed.includes("update") ||
+      lowerTrimmed.includes("recent") ||
+      lowerTrimmed.includes("what happened");
+
+    const autoDeepResearch =
+      lowerTrimmed.includes("deep research") ||
+      lowerTrimmed.includes("comprehensive analysis") ||
+      lowerTrimmed.includes("detailed study") ||
+      lowerTrimmed.includes("exhaustive breakdown") ||
+      lowerTrimmed.includes("comparative study");
+
+    // Advanced Visual Intent & Logo Design Intelligence
+    const visualIntent = parseVisualIntent(trimmed);
+    const creativeReq = !visualIntent ? detectCreativeIntent(trimmed) : null;
     let generatedImage: string | null = null;
-    if (creativeReq) {
+    const visualBriefData = visualIntent || undefined;
+
+    if (visualIntent && visualIntent.isVisualRequest) {
+      generatedImage = generateCreativeGraphic({
+        title: visualIntent.brandName,
+        subtitle: visualIntent.category === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : "PREMIUM BRAND IDENTITY",
+        category: visualIntent.designType === "logo" ? "logo" : (visualIntent.designType as any),
+        theme: visualIntent.theme as any,
+        conceptId: "emblem",
+        initials: visualIntent.initials,
+        customPalette: visualIntent.palette as any,
+        transparentBg: false,
+      });
+    } else if (creativeReq) {
       generatedImage = generateCreativeGraphic({
         title: creativeReq.title,
         subtitle: creativeReq.subtitle,
@@ -664,6 +885,22 @@ export function ChatDashboard({
     const websiteReq = detectWebsiteIntent(trimmed);
     const websiteCode = websiteReq ? websiteReq.htmlCode : null;
 
+    if (isDeepThinking) {
+      setAiStatusMessage("Deep Thinking & Multi-Step Reasoning Active...");
+    } else if (autoWebSearch) {
+      setAiStatusMessage("Searching web & grounding sources...");
+    } else if (autoDeepResearch) {
+      setAiStatusMessage("Synthesizing deep research report...");
+    } else if (visualIntent && visualIntent.designType === "logo") {
+      setAiStatusMessage(`Synthesizing brand identity for "${visualIntent.brandName}"...`);
+    } else if (visualIntent || creativeReq) {
+      setAiStatusMessage("Generating custom visual artwork...");
+    } else if (websiteReq) {
+      setAiStatusMessage("Architecting interactive web application...");
+    } else {
+      setAiStatusMessage("PREMIERS AI is reasoning...");
+    }
+
     // Create streaming assistant placeholder message
     const assistantMsgId = "msg_asst_" + (Date.now() + 1);
     const placeholderAssistantMsg: Message = {
@@ -674,6 +911,7 @@ export function ChatDashboard({
       isStreaming: true,
       isRTL: false,
       images: generatedImage ? [generatedImage] : [],
+      visualBrief: visualBriefData,
       websiteHtml: websiteCode || undefined,
     };
 
@@ -711,8 +949,9 @@ export function ChatDashboard({
           })),
           attachments: effectiveAttachments,
           targetLanguage: selectedLanguage,
-          webSearch: webSearchEnabled,
-          deepResearch: deepResearchMode,
+          webSearch: autoWebSearch,
+          deepResearch: autoDeepResearch,
+          deepThinking: isDeepThinking,
         }),
       });
 
@@ -808,7 +1047,7 @@ export function ChatDashboard({
             })),
             attachments: effectiveAttachments,
             targetLanguage: selectedLanguage,
-            webSearch: webSearchEnabled,
+            webSearch: autoWebSearch,
           }),
         });
 
@@ -818,7 +1057,7 @@ export function ChatDashboard({
         }
 
         const fallbackData = await fallbackRes.json();
-        accumulatedText = fallbackData.content || "I have received your query.";
+        accumulatedText = fallbackData.content || "";
         detectedLang = fallbackData.detectedLanguage || "Multilingual";
         isRtl = fallbackData.isRTL ?? isTextRTL(accumulatedText);
         if (fallbackData.sources) accumulatedSources = fallbackData.sources;
@@ -833,8 +1072,9 @@ export function ChatDashboard({
         finalContent = `### 💻 Full-Stack Interactive Web App: ${websiteReq.title}\n\n${accumulatedText}\n\n---\n⚡ **Interactive Live Preview & Code:**\nYou can test the functional application directly below or switch tabs to view the complete source code.`;
       }
 
-      if (!finalContent.trim()) {
-        finalContent = "I have processed your request. How else can I assist you today?";
+      const isGenerationFailed = !finalContent.trim();
+      if (isGenerationFailed) {
+        finalContent = "⚠️ PREMIERS AI was temporarily unable to generate a response due to high demand. Please click **Retry** below.";
       }
 
       // Finalize assistant message
@@ -844,11 +1084,13 @@ export function ChatDashboard({
         content: finalContent,
         timestamp: Date.now(),
         isStreaming: false,
+        isError: isGenerationFailed,
         detectedLanguage: detectedLang,
         isRTL: isRtl,
         sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
         searchQueries: accumulatedQueries.length > 0 ? accumulatedQueries : undefined,
         images: generatedImage ? [generatedImage] : [],
+        visualBrief: visualBriefData,
         websiteHtml: websiteCode || undefined,
       };
 
@@ -1183,63 +1425,31 @@ export function ChatDashboard({
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-bold text-white truncate max-w-[180px] sm:max-w-md">
+                <h1 className="text-sm sm:text-base font-bold text-white truncate max-w-[200px] sm:max-w-md">
                   {sessions.find((s) => s.id === activeSessionId)?.title || "Universal Intelligence"}
                 </h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wider">
-                  Live Grounding
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#00d4a0]/15 text-[#00d4a0] border border-[#00d4a0]/30 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00d4a0] animate-pulse" />
+                  PREMIERS AI
                 </span>
               </div>
               <p className="text-[11px] text-gray-400 hidden sm:block">
-                Powered by Gemini 2.5 Multi-Engine with Real-Time Google Search
+                Unified Multimodal Intelligence • Autonomous Search & Visual Generation
               </p>
             </div>
           </div>
 
-          {/* Header Action Buttons */}
+          {/* Clean Premium Header Actions */}
           <div className="flex items-center gap-2">
-            {/* Live Web Search Toggle */}
+            {/* New Conversation Button */}
             <button
               type="button"
-              onClick={() => setWebSearchEnabled((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
-                webSearchEnabled
-                  ? "bg-cyan-950/40 border-cyan-500/50 text-cyan-300 shadow-cyan-500/10"
-                  : "bg-[#141420] border-[#2b2b3e] text-gray-400 hover:text-gray-200"
-              }`}
-              title={webSearchEnabled ? "Web Search Active (Grounding with Google Search)" : "Enable Web Search"}
+              onClick={handleNewChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#2b2b3e] bg-[#141420] text-xs font-semibold text-gray-200 hover:text-white hover:border-[#00d4a0]/50 transition-all cursor-pointer shadow-sm active:scale-95"
+              title="Start a new conversation"
             >
-              <Globe className={`w-3.5 h-3.5 ${webSearchEnabled ? "text-cyan-400 animate-pulse" : "text-gray-500"}`} />
-              <span className="hidden sm:inline">Web Search</span>
-              <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${webSearchEnabled ? "bg-cyan-500/20 text-cyan-300" : "bg-gray-800 text-gray-500"}`}>
-                {webSearchEnabled ? "ON" : "OFF"}
-              </span>
-            </button>
-
-            {/* Deep Research Toggle */}
-            <button
-              type="button"
-              onClick={() => setDeepResearchMode((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
-                deepResearchMode
-                  ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-300 shadow-indigo-500/10"
-                  : "bg-[#141420] border-[#2b2b3e] text-gray-400 hover:text-gray-200"
-              }`}
-              title={deepResearchMode ? "Deep Research Active (Exhaustive Analysis)" : "Enable Deep Research"}
-            >
-              <Compass className={`w-3.5 h-3.5 ${deepResearchMode ? "text-indigo-400" : "text-gray-500"}`} />
-              <span className="hidden sm:inline">Deep Research</span>
-            </button>
-
-            {/* Image AI Studio Modal Launcher */}
-            <button
-              type="button"
-              onClick={() => setImageStudioOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/15 to-indigo-500/15 border border-teal-500/40 hover:border-teal-400 text-xs font-bold text-white transition-all cursor-pointer shadow-sm active:scale-95"
-              title="Open Image AI Studio"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-teal-400" />
-              <span className="hidden sm:inline">Image AI Studio</span>
+              <Plus className="w-3.5 h-3.5 text-[#00d4a0]" />
+              <span className="hidden sm:inline">New Chat</span>
             </button>
 
             {/* Clear Conversation */}
@@ -1255,52 +1465,7 @@ export function ChatDashboard({
               </button>
             )}
 
-            {/* Language Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setLangPickerOpen(!langPickerOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#2b2b3e] bg-[#141420] text-xs font-semibold text-gray-300 hover:text-white cursor-pointer min-h-[34px]"
-                title="Target Reply Language"
-              >
-                <Globe className="w-3.5 h-3.5 text-[#00d4a0]" />
-                <span className="hidden sm:inline">Reply:</span>
-                <span className="text-[#00d4a0]">
-                  {selectedLanguage === "auto"
-                    ? "Auto"
-                    : SUPPORTED_LANGUAGES.find((l) => l.code === selectedLanguage)?.name.split(" ")[0]}
-                </span>
-              </button>
-
-              {langPickerOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-56 max-h-64 overflow-y-auto rounded-xl border border-[#2e2e44] bg-[#12121c] p-1.5 shadow-2xl z-50 card-scroll"
-                  onMouseLeave={() => setLangPickerOpen(false)}
-                >
-                  <div className="px-2.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-[#242436] mb-1">
-                    Force Reply Language
-                  </div>
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => {
-                        setSelectedLanguage(lang.code);
-                        setLangPickerOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition-colors text-left ${
-                        selectedLanguage === lang.code
-                          ? "bg-[#00d4a0]/15 text-[#00d4a0] font-bold"
-                          : "text-gray-300 hover:bg-[#1a1a28] hover:text-white"
-                      }`}
-                    >
-                      <span>{lang.name}</span>
-                      <span className="text-gray-400 text-[10px]">{lang.nativeName}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Admin or Workspace Quick Launch */}
+            {/* Admin Quick Launch */}
             {user.role === "admin" && onOpenAdmin && (
               <button
                 onClick={onOpenAdmin}
@@ -1334,9 +1499,9 @@ export function ChatDashboard({
               <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-3xl mb-4 shadow-lg shadow-cyan-500/10">
                 ✦
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">How can NEXUS AI assist you?</h3>
+              <h3 className="text-lg font-bold text-white mb-2">How can PREMIERS AI assist you?</h3>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-6">
-                Type in English, Urdu (اردو), Roman Urdu, Arabic, or any world language. Live Google Search grounding, image vision analysis, interactive web apps, and creative design engines are active.
+                Type in English, Urdu (اردو), Roman Urdu, Arabic, or any world language. Autonomous web search grounding, multimodal vision, interactive web apps, and creative design engines are active.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 <button
@@ -1395,7 +1560,7 @@ export function ChatDashboard({
                       <div className="flex items-center gap-2">
                         {isAssistant ? (
                           <>
-                            <span className="font-semibold text-white">NEXUS AI</span>
+                            <span className="font-semibold text-white">PREMIERS AI</span>
                             {msg.detectedLanguage && (
                               <span className="flex items-center gap-1 text-cyan-400">
                                 <Globe className="w-3 h-3" />
@@ -1410,6 +1575,34 @@ export function ChatDashboard({
 
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-gray-400">{formatMessageTime(msg.timestamp)}</span>
+
+                        {isAssistant && !msg.isError && (
+                          <button
+                            type="button"
+                            onClick={() => handlePlayAudio(msg)}
+                            disabled={loadingAudioMsgId === msg.id}
+                            className={`p-1 px-1.5 rounded hover:bg-[#202032] transition-colors cursor-pointer flex items-center gap-1 text-[10px] ${
+                              playingAudioMsgId === msg.id
+                                ? "text-[#00d4a0] bg-[#00d4a0]/15 font-semibold"
+                                : "text-gray-400 hover:text-white"
+                            }`}
+                            title={playingAudioMsgId === msg.id ? "Stop audio" : "Read aloud with Gemini Voice"}
+                          >
+                            {loadingAudioMsgId === msg.id ? (
+                              <Loader2 className="w-3 h-3 text-[#00d4a0] animate-spin" />
+                            ) : playingAudioMsgId === msg.id ? (
+                              <>
+                                <VolumeX className="w-3 h-3 text-[#00d4a0]" />
+                                <span className="text-[#00d4a0]">Playing</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3" />
+                                <span>Listen</span>
+                              </>
+                            )}
+                          </button>
+                        )}
 
                         {isAssistant && !msg.isError && (
                           <button
@@ -1515,34 +1708,38 @@ export function ChatDashboard({
                       </div>
                     )}
 
-                    {/* Embedded Generated Images */}
-                    {msg.images && msg.images.length > 0 && (
-                      <div className="mt-4 space-y-3 pt-3 border-t border-[#202030]">
-                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-[#00d4a0]" />
-                          <span>Generated Creative Visual (Ready to Download)</span>
-                        </div>
-                        {msg.images.map((imgUrl, i) => (
-                          <div key={i} className="rounded-xl overflow-hidden border border-[#28283c] bg-[#0c0c14] p-2">
-                            <img
-                              src={imgUrl}
-                              alt="Generated Visual Asset"
-                              className="w-full max-h-96 object-contain rounded-lg mb-2"
-                            />
-                            <div className="flex items-center justify-between gap-2 pt-2 px-1">
-                              <span className="text-[11px] text-gray-400">High-Resolution Asset</span>
-                              <a
-                                href={imgUrl}
-                                download={`premiers-creative-${Date.now()}.png`}
-                                className="px-3 py-1.5 rounded-lg bg-[#00d4a0] hover:bg-[#00e8b0] text-black font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-md shadow-[#00d4a0]/25 btn-glow-pulse active:scale-95"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download PNG</span>
-                              </a>
-                            </div>
+                    {/* Embedded Professional Brand Identity Card or Creative Visuals */}
+                    {msg.visualBrief ? (
+                      <BrandIdentityCard intent={msg.visualBrief} />
+                    ) : (
+                      msg.images && msg.images.length > 0 && (
+                        <div className="mt-4 space-y-3 pt-3 border-t border-[#202030]">
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#00d4a0]" />
+                            <span>Generated Creative Visual (Ready to Download)</span>
                           </div>
-                        ))}
-                      </div>
+                          {msg.images.map((imgUrl, i) => (
+                            <div key={i} className="rounded-xl overflow-hidden border border-[#28283c] bg-[#0c0c14] p-2">
+                              <img
+                                src={imgUrl}
+                                alt="Generated Visual Asset"
+                                className="w-full max-h-96 object-contain rounded-lg mb-2"
+                              />
+                              <div className="flex items-center justify-between gap-2 pt-2 px-1">
+                                <span className="text-[11px] text-gray-400">High-Resolution Asset</span>
+                                <a
+                                  href={imgUrl}
+                                  download={`premiers-creative-${Date.now()}.png`}
+                                  className="px-3 py-1.5 rounded-lg bg-[#00d4a0] hover:bg-[#00e8b0] text-black font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-md shadow-[#00d4a0]/25 btn-glow-pulse active:scale-95"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download PNG</span>
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
                     )}
 
                     {/* Embedded Live Website Sandbox Preview & Code Viewer */}
@@ -1610,6 +1807,91 @@ export function ChatDashboard({
         {/* Input Bar pinned to bottom */}
         <div className="p-3 sm:p-4 border-t border-[#202030] bg-[#0e0e16] shrink-0">
           <div className="max-w-4xl mx-auto space-y-2">
+            {/* AI Capabilities Quick Toolbar */}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {/* Deep Thinking / Reasoning Mode Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsDeepThinking(!isDeepThinking)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                    isDeepThinking
+                      ? "bg-[#6366f1]/20 border-[#818cf8]/50 text-[#818cf8] shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                      : "bg-[#141420] border-[#252538] text-gray-400 hover:text-gray-200 hover:border-gray-600"
+                  }`}
+                  title="Toggle Gemini 3 Deep Reasoning & Multi-step Logic"
+                >
+                  <BrainCircuit className={`w-3.5 h-3.5 ${isDeepThinking ? "text-[#818cf8] animate-pulse" : "text-gray-400"}`} />
+                  <span>Deep Thinking</span>
+                  {isDeepThinking && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#818cf8] animate-ping ml-0.5" />
+                  )}
+                </button>
+
+                {/* Web Search Grounding Status */}
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#141420] border border-[#252538] text-cyan-400 select-none">
+                  <SearchCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="hidden sm:inline">Web Grounding</span>
+                  <span className="sm:hidden">Search</span>
+                </span>
+
+                {/* Creative Studio Quick Launch */}
+                <button
+                  type="button"
+                  onClick={() => setImageStudioOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#141420] border border-[#252538] text-gray-300 hover:text-white hover:border-[#00d4a0]/40 transition-colors cursor-pointer"
+                  title="Open Creative Graphic & Logo Studio"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#00d4a0]" />
+                  <span>Visual Studio</span>
+                </button>
+              </div>
+
+              {/* Prompt Enhancer Button (active when input has text) */}
+              {inputText.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleEnhancePrompt}
+                  disabled={isEnhancingPrompt}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#00d4a0]/15 hover:bg-[#00d4a0]/25 border border-[#00d4a0]/40 text-[#00d4a0] text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                  title="Enhance this prompt using AI"
+                >
+                  {isEnhancingPrompt ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span className="hidden sm:inline">Enhancing…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-3 h-3" />
+                      <span>Enhance Prompt</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Voice Recording / Transcribing Indicator banner */}
+            {(isRecordingVoice || isTranscribing) && (
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-red-950/40 border border-red-500/40 text-xs text-red-200 animate-in fade-in-50">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                  <span className="font-semibold">
+                    {isRecordingVoice ? "Listening to your voice… (Speak in any language)" : "Transcribing speech with Gemini AI…"}
+                  </span>
+                </div>
+                {isRecordingVoice && (
+                  <button
+                    type="button"
+                    onClick={handleToggleVoiceRecord}
+                    className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] cursor-pointer"
+                  >
+                    Done Speaking
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Attachment preview tags */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 pb-1">
@@ -1654,6 +1936,29 @@ export function ChatDashboard({
                 className="hidden"
               />
 
+              {/* Voice Microphone Input Button (Gemini STT) */}
+              <button
+                type="button"
+                onClick={handleToggleVoiceRecord}
+                className={`p-2 rounded-xl transition-all cursor-pointer shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center ${
+                  isRecordingVoice
+                    ? "bg-red-600 text-white shadow-lg shadow-red-600/40 animate-pulse"
+                    : isTranscribing
+                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                    : "text-gray-400 hover:text-white hover:bg-[#1f1f2e]"
+                }`}
+                title={isRecordingVoice ? "Stop speech recording" : "Dictate with Voice (Gemini Speech-to-Text)"}
+                aria-label="Dictate message with voice"
+              >
+                {isTranscribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                ) : isRecordingVoice ? (
+                  <MicOff className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+
               {/* Textarea */}
               <textarea
                 ref={textareaRef}
@@ -1669,7 +1974,13 @@ export function ChatDashboard({
                     handleSendMessage();
                   }
                 }}
-                placeholder="Ask PREMIERS anything in any language (English, Urdu, Arabic, etc.)…"
+                placeholder={
+                  isRecordingVoice
+                    ? "Listening… speak naturally now…"
+                    : isDeepThinking
+                    ? "Deep Thinking active: Ask complex mathematical, STEM, or analytical questions…"
+                    : "Ask PREMIERS anything in any language (English, Urdu, Arabic, etc.)…"
+                }
                 dir={isTextRTL(inputText) ? "rtl" : "ltr"}
                 rows={1}
                 className={`flex-1 bg-transparent text-sm text-white placeholder-gray-500 resize-none focus:outline-none py-2 px-1 max-h-44 ${

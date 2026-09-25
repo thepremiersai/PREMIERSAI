@@ -17,6 +17,7 @@ import {
   Share2,
 } from "lucide-react";
 import { generateCreativeGraphic, GraphicOptions } from "../lib/creativeGenerator";
+import { parseVisualIntent } from "../lib/visualIntentEngine";
 
 interface ImageAiStudioModalProps {
   onClose: () => void;
@@ -38,6 +39,8 @@ export function ImageAiStudioModal({ onClose, onSendToChat }: ImageAiStudioModal
 
   // Generator form
   const [category, setCategory] = useState<"logo" | "thumbnail" | "poster" | "banner">("logo");
+  const [conceptId, setConceptId] = useState<"emblem" | "monogram" | "combination" | "badge">("emblem");
+  const [isTransparent, setIsTransparent] = useState(false);
   const [title, setTitle] = useState("PREMIERS AI");
   const [subtitle, setSubtitle] = useState("Intelligent Creative Suite");
   const [palette, setPalette] = useState<"emerald" | "cyber" | "sunset" | "luxury" | "ocean">("emerald");
@@ -88,20 +91,29 @@ export function ImageAiStudioModal({ onClose, onSendToChat }: ImageAiStudioModal
     setIsGenerating(true);
     setTimeout(() => {
       try {
+        const intent = parseVisualIntent(title);
+        const effectiveTitle = intent ? intent.brandName : (title.trim() || "PREMIERS AI");
+        const effectiveTheme = intent ? (intent.theme as any) : undefined;
+        const effectiveInitials = intent ? intent.initials : undefined;
+
         const url = generateCreativeGraphic({
-          title: title.trim() || "PREMIERS AI",
+          title: effectiveTitle,
           subtitle: subtitle.trim(),
           category,
+          theme: effectiveTheme,
+          conceptId: category === "logo" ? conceptId : undefined,
+          initials: effectiveInitials,
           palette,
+          transparentBg: isTransparent,
         });
         setGeneratedUrl(url);
-        saveToHistory(url, title.trim() || "PREMIERS AI", category);
+        saveToHistory(url, effectiveTitle, category);
       } catch (err) {
         console.error("Image generation error:", err);
       } finally {
         setIsGenerating(false);
       }
-    }, 700);
+    }, 600);
   };
 
   // Handle uploaded source image for enhancement
@@ -328,6 +340,68 @@ export function ImageAiStudioModal({ onClose, onSendToChat }: ImageAiStudioModal
                         <span className="text-xs font-medium truncate">{pal.name}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Logo Concept Selection (when logo is selected) */}
+                {category === "logo" && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                      Logo Concept Strategy
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "emblem", label: "Primary Emblem", desc: "Dynamic Crest / Shield" },
+                        { id: "monogram", label: "Monogram Mark", desc: "Faceted Lettermark" },
+                        { id: "combination", label: "Combination Mark", desc: "Symbol + Typography" },
+                        { id: "badge", label: "Tournament Badge", desc: "Hexagonal Insignia Seal" },
+                      ].map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setConceptId(c.id as any)}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            conceptId === c.id
+                              ? "border-[#00d4a0] bg-[#00d4a0]/15 text-white"
+                              : "border-[#252538] bg-[#141422] text-gray-400 hover:border-[#35354e]"
+                          }`}
+                        >
+                          <div className="font-bold text-xs text-white">{c.label}</div>
+                          <div className="text-[10px] text-gray-400">{c.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Background Transparency Mode */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                    Background Output
+                  </label>
+                  <div className="flex items-center gap-2 bg-[#12121e] p-1 rounded-xl border border-[#252538] text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setIsTransparent(false)}
+                      className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                        !isTransparent
+                          ? "bg-[#00d4a0] text-black shadow-sm"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      🌙 Solid Dark Stage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsTransparent(true)}
+                      className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                        isTransparent
+                          ? "bg-[#00d4a0] text-black shadow-sm"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      ✨ Transparent PNG
+                    </button>
                   </div>
                 </div>
 

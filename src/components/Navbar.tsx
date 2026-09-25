@@ -57,7 +57,7 @@ export function Navbar({
           <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
             PREMIERS
             <span className="text-xs px-2 py-0.5 rounded-full bg-[#00d4a0]/15 text-[#00d4a0] border border-[#00d4a0]/30 font-semibold tracking-normal hidden sm:inline-block">
-              AI Global
+              AI
             </span>
           </span>
         </div>

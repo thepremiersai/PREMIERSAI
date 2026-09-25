@@ -4,6 +4,7 @@ import {
   generateCryptoWebsiteHtml,
   generateRealEstateWebsiteHtml,
 } from "./websiteTemplates";
+import { extractAccurateBrandName } from "./visualIntentEngine";
 
 /**
  * PREMIERS AI — Prompt Sense Engine
@@ -67,71 +68,8 @@ export interface WebsiteIntentResult {
  * Clean and extract the brand or entity name from user prompt
  */
 function extractBrandName(rawText: string, theme: string): string {
-  // 1. Quoted string priority: e.g. 'Horizon' or "Nexus Tech"
-  const quoted = rawText.match(/["'“]([^"'”]+)["'”]/);
-  if (quoted && quoted[1].trim()) {
-    return quoted[1].trim();
-  }
-
-  // 2. Explicit identifier priority: "named X", "called X", "brand X", "company X"
-  const namedMatch = rawText.match(/\b(?:named|called|brand|company|for)\s+([A-Za-z0-9][A-Za-z0-9\s&'-]{1,26})/i);
-  if (namedMatch && namedMatch[1].trim()) {
-    const candidate = namedMatch[1].trim().replace(/\b(a|an|the|with|and|in)\b$/gi, "").trim();
-    if (candidate.length >= 2 && !["logo", "image", "website", "banner", "poster"].includes(candidate.toLowerCase())) {
-      return candidate
-        .split(/\s+/)
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-        .join(" ");
-    }
-  }
-
-  // 3. Clean out common command & trigger words to preserve the actual subject
-  let cleaned = rawText
-    .replace(/\b(create|make|generate|design|build|draw|give|want|need|show|paint|render)\b/gi, "")
-    .replace(/\b(a|an|the|for|my|our|with|using|in|of|on|at|and|please|plz|banao|bana do|bana dein|chahiye)\b/gi, "")
-    .replace(/\b(logo|logos|لوگو|شعار|thumbnail|banner|poster|avatar|badge|icon|picture|image|photo|wallpaper|art|render|tasveer|تصویر)\b/gi, "")
-    .replace(/\b(free fire|freefire|ff|yt|youtube|gaming|esports|bg|background)\b/gi, "")
-    .trim();
-
-  // If uppercase acronym exists (e.g. BMW, AI, NASA, APEX)
-  const capsMatch = rawText.match(/\b([A-Z0-9]{3,12})\b/);
-  if (capsMatch && capsMatch[1] && !["LOGO", "FREE", "FIRE", "MAKE", "WITH", "IMAGE", "CREATE", "DESIGN"].includes(capsMatch[1])) {
-    return capsMatch[1];
-  }
-
-  // Remove trailing punctuation
-  cleaned = cleaned.replace(/[.,?!:;]/g, "").trim();
-
-  if (cleaned.length >= 2 && cleaned.length <= 34) {
-    return cleaned
-      .split(/\s+/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" ");
-  }
-
-  // Thematic fallback defaults (clean, professional, brand-appropriate)
-  if (theme === "car") return "APEX HYPERCAR GT";
-  if (theme === "landscape") return "ALPINE SUNSET HORIZON";
-  if (theme === "cyber_city") return "NEO CYBER CITY 2099";
-  if (theme === "space") return "COSMIC ODYSSEY";
-  if (theme === "animal") return "MAJESTIC GOLDEN LION";
-  if (theme === "anime") return "CYBER SHINOBI";
-  if (theme === "architecture") return "MODERN GLASS VILLA";
-  if (theme === "food") return "ARTISANAL GOURMET";
-  if (theme === "abstract") return "PRISMATIC CHROME";
-  if (theme === "company_logo") return "NEXUS ENTERPRISE";
-  if (theme === "luxury") return "AURA ROYAL HERITAGE";
-  if (theme === "tech") return "QUANTUM TECH CORP";
-  if (theme === "fitness") return "TITAN IRON ATHLETICS";
-  if (theme === "crypto") return "GENESIS BLOCKCHAIN";
-  if (theme === "medical") return "NOVA HEALTH CLINIC";
-  if (theme === "robotics") return "SYNTHETIC AI CORE";
-  if (theme === "fantasy") return "ASTRAL CITADEL";
-  if (theme === "portrait") return "CYBERNETIC MUSE";
-  if (theme === "free_fire") return "APEX BATTLE ROYALE";
-  if (theme === "youtube") return "CREATOR STUDIO PRO";
-  if (theme === "cyber_gaming") return "NEXUS ESPORTS ARENA";
-  return "PREMIERS VISUAL CORE";
+  const result = extractAccurateBrandName(rawText, theme);
+  return result.brandName;
 }
 
 /**
@@ -179,7 +117,14 @@ export function detectCreativeIntent(text: string): CreativeIntentResult | null 
     lower.includes("عکس") ||
     lower.includes("صورة") ||
     lower.includes("paint") ||
-    lower.includes("render");
+    lower.includes("render") ||
+    lower.includes("laboratory") ||
+    lower.includes("lab") ||
+    lower.includes("illustration") ||
+    lower.includes("portrait") ||
+    lower.includes("visual") ||
+    /\b(draw|sketch|paint|illustrate|visualize|render)\b/i.test(lower) ||
+    /\b(create|generate|make|design)\s+(?:an?|the|some)?\s*(?:futuristic|cyberpunk|photorealistic|isometric|3d|scenic|beautiful|minimalist|epic|hyperrealistic|luxury|modern|vintage)?\s*(?:image|picture|photo|illustration|scene|portrait|landscape|laboratory|cityscape|wallpaper|artwork|render|visual|logo|banner|poster|thumbnail)/i.test(lower);
 
   if (!isLogo && !isThumbnail && !isBanner && !isPoster && !isGenericImage) {
     return null;
@@ -439,8 +384,8 @@ export function detectCreativeIntent(text: string): CreativeIntentResult | null 
   else if (theme === "robotics") subtitle = "AUTONOMOUS CYBERNETICS & AI CORE";
   else if (theme === "fantasy") subtitle = "ETHEREAL CITADEL & MYTHIC REALM";
   else if (theme === "portrait") subtitle = "CINEMATIC FASHION PORTRAIT • 4K HIGH FIDELITY";
-  else if (theme === "company_logo") subtitle = "GLOBAL INNOVATION & TECHNOLOGY ENTERPRISE";
-  else if (theme === "free_fire") subtitle = "BATTLE ROYALE PRO ESPORTS CLAN";
+  else if (theme === "company_logo") subtitle = "ENTERPRISE INNOVATION & TECHNOLOGY";
+  else if (theme === "free_fire") subtitle = "COMPETITIVE ESPORTS CLAN";
   else if (theme === "youtube") subtitle = "OFFICIAL YOUTUBE CHANNEL • VERIFIED CREATOR";
   else if (theme === "cyber_gaming") subtitle = "CHAMPIONSHIP ESPORTS & GAMING GUILD";
   else if (theme === "luxury") subtitle = "PRESTIGE & BESPOKE COLLECTION";
@@ -498,7 +443,7 @@ export function detectWebsiteIntent(text: string): WebsiteIntentResult | null {
     title = customBrand ? `${customBrand} — Battle Royale Clan` : "Vanguard — Battle Royale Championship Guild";
   } else if (lower.includes("gaming") || lower.includes("esports") || lower.includes("clan") || lower.includes("tournament")) {
     industry = "gaming";
-    title = customBrand ? `${customBrand} — Championship Arena` : "Nexus Esports — Championship Gaming Arena";
+    title = customBrand ? `${customBrand} — Championship Arena` : "Premiers Esports — Championship Gaming Arena";
   } else if (lower.includes("fitness") || lower.includes("gym") || lower.includes("workout") || lower.includes("crossfit") || lower.includes("athletic")) {
     industry = "fitness";
     title = customBrand ? `${customBrand} — Elite Athletic Club` : "Apex Fitness — Elite Strength & Conditioning";

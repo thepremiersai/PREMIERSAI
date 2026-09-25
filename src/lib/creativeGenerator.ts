@@ -33,6 +33,18 @@ export interface GraphicOptions {
     | "cyber_gaming"
     | "standard";
   palette?: "emerald" | "cyber" | "sunset" | "luxury" | "ocean" | "fire" | "neon";
+  customPalette?: {
+    name?: string;
+    primary: string;
+    accent: string;
+    bg1: string;
+    bg2: string;
+    text: string;
+    muted: string;
+  };
+  conceptId?: "emblem" | "monogram" | "combination" | "badge";
+  initials?: string;
+  transparentBg?: boolean;
   width?: number;
   height?: number;
 }
@@ -92,8 +104,11 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
   const category = options.category || "logo";
   const theme = options.theme || "standard";
   const palKey = theme === "free_fire" ? "fire" : theme === "luxury" ? "luxury" : options.palette || "emerald";
-  const palette = PALETTES[palKey] || PALETTES.emerald;
+  const palette = (options.customPalette as any) || PALETTES[palKey] || PALETTES.emerald;
   const title = (options.title || "PREMIERS AI").toUpperCase();
+  const transparentBg = !!options.transparentBg;
+  const conceptId = options.conceptId || "emblem";
+  const initials = options.initials || deriveInitialLetters(title);
 
   let width = options.width || 1000;
   let height = options.height || 1000;
@@ -126,24 +141,33 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
 
   // 1. Render Specific Theme or Category
   if (category === "logo") {
-    if (theme === "company_logo" || theme === "tech") {
-      drawCompanyLogo(ctx, width, height, title, options.subtitle, palette);
-    } else if (theme === "luxury") {
-      drawLuxuryLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "crypto") {
-      drawCryptoBlockchain(ctx, width, height, title, options.subtitle);
-    } else if (theme === "medical") {
-      drawMedicalClinic(ctx, width, height, title, options.subtitle);
-    } else if (theme === "fitness") {
-      drawFitnessGym(ctx, width, height, title, options.subtitle);
-    } else if (theme === "free_fire") {
-      drawFreeFireLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "youtube") {
-      drawYouTubeLogo(ctx, width, height, title, options.subtitle);
-    } else if (theme === "cyber_gaming") {
-      drawCyberGamingLogo(ctx, width, height, title, options.subtitle);
+    if (conceptId === "monogram") {
+      drawMonogramLogo(ctx, width, height, title, initials, palette, transparentBg);
+    } else if (conceptId === "combination") {
+      drawCombinationLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
+    } else if (conceptId === "badge") {
+      drawTournamentBadgeLogo(ctx, width, height, title, initials, palette, transparentBg);
     } else {
-      drawModernBrandLogo(ctx, width, height, title, options.subtitle, palette);
+      // Primary Concept Direction
+      if (theme === "car") {
+        drawAutomotiveLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
+      } else if (theme === "free_fire" || theme === "cyber_gaming") {
+        drawFreeFireLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
+      } else if (theme === "luxury") {
+        drawLuxuryLogo(ctx, width, height, title, options.subtitle);
+      } else if (theme === "company_logo" || theme === "tech") {
+        drawCompanyLogo(ctx, width, height, title, options.subtitle, palette);
+      } else if (theme === "crypto") {
+        drawCryptoBlockchain(ctx, width, height, title, options.subtitle);
+      } else if (theme === "medical") {
+        drawMedicalClinic(ctx, width, height, title, options.subtitle);
+      } else if (theme === "fitness") {
+        drawFitnessGym(ctx, width, height, title, options.subtitle);
+      } else if (theme === "youtube") {
+        drawYouTubeLogo(ctx, width, height, title, options.subtitle);
+      } else {
+        drawModernBrandLogo(ctx, width, height, title, options.subtitle, palette);
+      }
     }
   } else if (
     category === "image" ||
@@ -208,6 +232,460 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
   return canvas.toDataURL("image/png");
 }
 
+function deriveInitialLetters(brand: string): string {
+  if (!brand) return "P";
+  const words = brand.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  if (words.length === 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (words[0][0] + words[1][0] + (words[2] ? words[2][0] : "")).toUpperCase();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT B: GEOMETRIC MONOGRAM LOGO
+ * Precision-crafted interlocking vector monogram with faceted bevels.
+ * =======================================================================
+ */
+function drawMonogramLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  initials: string,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false
+) {
+  const cx = w / 2;
+  const cy = h * 0.42;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, pal.bg1 || "#0c0a12");
+    bgGrad.addColorStop(0.6, pal.bg2 || "#050408");
+    bgGrad.addColorStop(1, "#020204");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Glowing Outer Diamond / Hexagon Shield
+  const r = Math.min(w, h) * 0.19;
+  ctx.save();
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 7;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 30;
+
+  // Diamond shield
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 1.08, cy);
+  ctx.lineTo(cx, cy + r * 1.18);
+  ctx.lineTo(cx - r * 1.08, cy);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Inner Metallic Diamond Fill
+  const shieldGrad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+  shieldGrad.addColorStop(0, "rgba(255,255,255,0.09)");
+  shieldGrad.addColorStop(0.5, "rgba(0,0,0,0.45)");
+  shieldGrad.addColorStop(1, "rgba(0,0,0,0.88)");
+  ctx.fillStyle = shieldGrad;
+  ctx.fill();
+
+  // Secondary Accent Rim
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r + 15);
+  ctx.lineTo(cx + r * 1.08 - 15, cy);
+  ctx.lineTo(cx, cy + r * 1.18 - 18);
+  ctx.lineTo(cx - r * 1.08 + 15, cy);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Interlocking Monogram Glyphs
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 24;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const monoSize = Math.floor(r * 1.05);
+  ctx.font = `900 ${monoSize}px 'Plus Jakarta Sans', Impact, sans-serif`;
+
+  // 3D shadow for monogram
+  ctx.fillStyle = "#000000";
+  ctx.fillText(initials, cx, cy + 6);
+
+  // Gradient front face
+  const monoGrad = ctx.createLinearGradient(0, cy - r * 0.6, 0, cy + r * 0.6);
+  monoGrad.addColorStop(0, "#ffffff");
+  monoGrad.addColorStop(0.45, pal.accent);
+  monoGrad.addColorStop(1, pal.primary);
+  ctx.fillStyle = monoGrad;
+  ctx.fillText(initials, cx, cy);
+  ctx.restore();
+
+  // Brand Name Typography Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.072), 64);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+  // 3D Shadow
+  ctx.fillStyle = "#000000";
+  ctx.fillText(title, cx, h * 0.72 + 4);
+
+  // Gradient Text
+  const titleGrad = ctx.createLinearGradient(0, h * 0.68, 0, h * 0.76);
+  titleGrad.addColorStop(0, "#ffffff");
+  titleGrad.addColorStop(1, pal.text || "#e2e8f0");
+  ctx.fillStyle = titleGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 15;
+  ctx.fillText(title, cx, h * 0.72);
+
+  // Subtitle / Label
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.letterSpacing = "4px";
+  ctx.shadowBlur = 0;
+  ctx.fillText("PRECISION MONOGRAM • VERIFIED BRAND", cx, h * 0.80);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT C: COMBINATION MARK LOGO
+ * Dynamic vector icon paired with balanced horizontal typography.
+ * =======================================================================
+ */
+function drawCombinationLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string | undefined,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false
+) {
+  const cx = w / 2;
+  const cy = h * 0.40;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, pal.bg1 || "#070a0f");
+    bgGrad.addColorStop(1, pal.bg2 || "#101622");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Modern Minimalist Dynamic Vector Icon (Intersecting Geometric Shards)
+  const size = Math.min(w, h) * 0.16;
+  ctx.save();
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 28;
+
+  // Left Shard
+  const grad1 = ctx.createLinearGradient(cx - size, cy - size, cx, cy + size);
+  grad1.addColorStop(0, pal.primary);
+  grad1.addColorStop(1, pal.accent);
+  ctx.fillStyle = grad1;
+  ctx.beginPath();
+  ctx.moveTo(cx - size * 0.8, cy - size * 0.7);
+  ctx.lineTo(cx - size * 0.1, cy - size * 0.95);
+  ctx.lineTo(cx - size * 0.1, cy + size * 0.6);
+  ctx.lineTo(cx - size * 0.8, cy + size * 0.1);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right Shard
+  const grad2 = ctx.createLinearGradient(cx, cy - size, cx + size, cy + size);
+  grad2.addColorStop(0, pal.accent);
+  grad2.addColorStop(1, "#38bdf8");
+  ctx.fillStyle = grad2;
+  ctx.beginPath();
+  ctx.moveTo(cx + size * 0.1, cy - size * 0.6);
+  ctx.lineTo(cx + size * 0.8, cy - size * 0.1);
+  ctx.lineTo(cx + size * 0.8, cy + size * 0.7);
+  ctx.lineTo(cx + size * 0.1, cy + size * 0.95);
+  ctx.closePath();
+  ctx.fill();
+
+  // Center Prismatic Core
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(cx, cy + size * 0.05, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Clean Typography with Balanced Tracking
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 66);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 16;
+  ctx.fillText(title, cx, h * 0.70);
+
+  // Horizontal Rule Dividers
+  const subText = subtitle || "OFFICIAL BRAND IDENTITY • COMBINATION MARK";
+  ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.muted || "#94a3b8";
+  ctx.letterSpacing = "5px";
+  ctx.shadowBlur = 0;
+  ctx.fillText(subText.toUpperCase(), cx, h * 0.78);
+
+  ctx.strokeStyle = pal.primary + "44";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 160, h * 0.83);
+  ctx.lineTo(cx + 160, h * 0.83);
+  ctx.stroke();
+
+  // Accent Dot in Center of Rule
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  ctx.arc(cx, h * 0.83, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT D: TOURNAMENT BADGE LOGO
+ * Hexagonal tournament insignia seal with embedded stars and typography.
+ * =======================================================================
+ */
+function drawTournamentBadgeLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  initials: string,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false
+) {
+  const cx = w / 2;
+  const cy = h * 0.41;
+  const r = Math.min(w, h) * 0.20;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, pal.bg1 || "#0c0c14");
+    bgGrad.addColorStop(0.5, pal.bg2 || "#06060a");
+    bgGrad.addColorStop(1, "#020204");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Hexagonal Tournament Shield
+  ctx.save();
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 8;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 30;
+
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const ang = (i * Math.PI) / 3 - Math.PI / 6;
+    const hx = cx + Math.cos(ang) * r;
+    const hy = cy + Math.sin(ang) * r;
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Hexagon Inner Fill
+  const hexFill = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+  hexFill.addColorStop(0, "#1c1428");
+  hexFill.addColorStop(0.5, "#0f0b18");
+  hexFill.addColorStop(1, "#07050c");
+  ctx.fillStyle = hexFill;
+  ctx.fill();
+
+  // Inner Dashed Tech Border
+  ctx.setLineDash([8, 8]);
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const ang = (i * Math.PI) / 3 - Math.PI / 6;
+    const hx = cx + Math.cos(ang) * (r - 16);
+    const hy = cy + Math.sin(ang) * (r - 16);
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Central Initial Monogram
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `900 ${Math.floor(r * 0.72)}px 'Plus Jakarta Sans', Impact, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = pal.accent;
+  ctx.shadowBlur = 20;
+  ctx.fillText(initials, cx, cy - 8);
+
+  // Five Stars under initials
+  ctx.fillStyle = "#ffd700";
+  ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("★★★★★", cx, cy + r * 0.48);
+  ctx.restore();
+
+  // Brand Name Typography
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 66);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 18;
+  ctx.fillText(title, cx, h * 0.72);
+
+  // Tournament Badge Label
+  ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.letterSpacing = "4px";
+  ctx.shadowBlur = 0;
+  ctx.fillText("OFFICIAL TOURNAMENT BADGE • REGISTERED", cx, h * 0.80);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * AUTOMOTIVE BRAND LOGO (e.g. Zaid Motors)
+ * Dynamic swept wings with central chrome shield and speed chevrons.
+ * =======================================================================
+ */
+function drawAutomotiveLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string | undefined,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false
+) {
+  const cx = w / 2;
+  const cy = h * 0.40;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, w * 0.75);
+    bgGrad.addColorStop(0, "#16161c");
+    bgGrad.addColorStop(0.6, "#0a0a0e");
+    bgGrad.addColorStop(1, "#030305");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Aerodynamic Swept Wing Silhouette (Ferrari / Bentley / Aston Martin aesthetic)
+  ctx.save();
+  const wingSpan = w * 0.38;
+  const wingH = 65;
+
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 30;
+
+  // Left Swept Wing
+  const leftGrad = ctx.createLinearGradient(cx - wingSpan, cy, cx, cy);
+  leftGrad.addColorStop(0, "#ffffff");
+  leftGrad.addColorStop(0.4, pal.accent);
+  leftGrad.addColorStop(1, pal.primary);
+  ctx.fillStyle = leftGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 25);
+  ctx.lineTo(cx - wingSpan * 0.4, cy - wingH * 0.8);
+  ctx.lineTo(cx - wingSpan, cy - wingH * 0.5);
+  ctx.lineTo(cx - wingSpan * 0.8, cy + 10);
+  ctx.lineTo(cx - wingSpan * 0.3, cy + 5);
+  ctx.lineTo(cx, cy + 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right Swept Wing
+  const rightGrad = ctx.createLinearGradient(cx, cy, cx + wingSpan, cy);
+  rightGrad.addColorStop(0, pal.primary);
+  rightGrad.addColorStop(0.6, pal.accent);
+  rightGrad.addColorStop(1, "#ffffff");
+  ctx.fillStyle = rightGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 25);
+  ctx.lineTo(cx + wingSpan * 0.4, cy - wingH * 0.8);
+  ctx.lineTo(cx + wingSpan, cy - wingH * 0.5);
+  ctx.lineTo(cx + wingSpan * 0.8, cy + 10);
+  ctx.lineTo(cx + wingSpan * 0.3, cy + 5);
+  ctx.lineTo(cx, cy + 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Central Chrome Shield
+  const shieldGrad = ctx.createLinearGradient(0, cy - 45, 0, cy + 45);
+  shieldGrad.addColorStop(0, "#ffffff");
+  shieldGrad.addColorStop(0.3, "#cbd5e1");
+  shieldGrad.addColorStop(0.7, "#1e293b");
+  shieldGrad.addColorStop(1, "#0f172a");
+  ctx.fillStyle = shieldGrad;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 40);
+  ctx.lineTo(cx + 38, cy - 15);
+  ctx.lineTo(cx + 28, cy + 35);
+  ctx.lineTo(cx, cy + 55);
+  ctx.lineTo(cx - 28, cy + 35);
+  ctx.lineTo(cx - 38, cy - 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Speed Chevrons in Shield
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 20);
+  ctx.lineTo(cx + 18, cy);
+  ctx.lineTo(cx + 12, cy + 6);
+  ctx.lineTo(cx, cy - 8);
+  ctx.lineTo(cx - 12, cy + 6);
+  ctx.lineTo(cx - 18, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Slanted Automotive Brand Name
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 68);
+  ctx.font = `italic 900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+  const textGrad = ctx.createLinearGradient(0, h * 0.66, 0, h * 0.74);
+  textGrad.addColorStop(0, "#ffffff");
+  textGrad.addColorStop(1, "#e2e8f0");
+  ctx.fillStyle = textGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 16;
+  ctx.fillText(title, cx, h * 0.70);
+
+  // Subtitle / Marque
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.letterSpacing = "6px";
+  ctx.shadowBlur = 0;
+  ctx.fillText((subtitle || "HIGH-PERFORMANCE AUTOMOTIVE").toUpperCase(), cx, h * 0.78);
+  ctx.restore();
+}
+
 /**
  * =======================================================================
  * BATTLE ROYALE / ESPORTS MASCOT LOGO
@@ -221,48 +699,52 @@ function drawFreeFireLogo(
   w: number,
   h: number,
   title: string,
-  subtitle?: string
+  subtitle?: string,
+  pal: typeof PALETTES.fire = PALETTES.fire,
+  transparentBg: boolean = false
 ) {
   const cx = w / 2;
   const cy = h / 2 - 20;
 
-  // 1. Volcanic Battleground Dark Gradient
-  const bgGrad = ctx.createRadialGradient(cx, cy, 60, cx, cy, w * 0.75);
-  bgGrad.addColorStop(0, "#2c0909");
-  bgGrad.addColorStop(0.4, "#180404");
-  bgGrad.addColorStop(1, "#0a0202");
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
+  if (!transparentBg) {
+    // 1. Volcanic Battleground Dark Gradient
+    const bgGrad = ctx.createRadialGradient(cx, cy, 60, cx, cy, w * 0.75);
+    bgGrad.addColorStop(0, pal.bg2 || "#2c0909");
+    bgGrad.addColorStop(0.4, pal.bg1 || "#180404");
+    bgGrad.addColorStop(1, "#0a0202");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
-  // 2. Dramatic Backlight Explosion / Rim Glow
-  const explosionGrad = ctx.createRadialGradient(cx, cy - 30, 20, cx, cy - 30, w * 0.45);
-  explosionGrad.addColorStop(0, "rgba(255, 90, 0, 0.45)");
-  explosionGrad.addColorStop(0.5, "rgba(255, 30, 0, 0.18)");
-  explosionGrad.addColorStop(1, "transparent");
-  ctx.fillStyle = explosionGrad;
-  ctx.beginPath();
-  ctx.arc(cx, cy - 30, w * 0.45, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 3. Dynamic Rising Fire Embers / Sparks (Free Fire Battlefield feel)
-  ctx.save();
-  for (let i = 0; i < 45; i++) {
-    const px = (cx + (Math.sin(i * 13) * w * 0.45) + w) % w;
-    const py = (cy + 180 - ((i * 27) % (h * 0.85)));
-    const pr = 1.5 + (i % 4) * 1.5;
-    const alpha = 0.35 + (i % 5) * 0.12;
-
-    const emberGrad = ctx.createRadialGradient(px, py, 0, px, py, pr * 2.5);
-    emberGrad.addColorStop(0, `rgba(255, 220, 100, ${alpha})`);
-    emberGrad.addColorStop(0.4, `rgba(255, 80, 0, ${alpha * 0.8})`);
-    emberGrad.addColorStop(1, "transparent");
-
-    ctx.fillStyle = emberGrad;
+    // 2. Dramatic Backlight Explosion / Rim Glow
+    const explosionGrad = ctx.createRadialGradient(cx, cy - 30, 20, cx, cy - 30, w * 0.45);
+    explosionGrad.addColorStop(0, "rgba(255, 90, 0, 0.45)");
+    explosionGrad.addColorStop(0.5, "rgba(255, 30, 0, 0.18)");
+    explosionGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = explosionGrad;
     ctx.beginPath();
-    ctx.arc(px, py, pr * 2.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 30, w * 0.45, 0, Math.PI * 2);
     ctx.fill();
+
+    // 3. Dynamic Rising Fire Embers / Sparks (Free Fire Battlefield feel)
+    ctx.save();
+    for (let i = 0; i < 45; i++) {
+      const px = (cx + (Math.sin(i * 13) * w * 0.45) + w) % w;
+      const py = (cy + 180 - ((i * 27) % (h * 0.85)));
+      const pr = 1.5 + (i % 4) * 1.5;
+      const alpha = 0.35 + (i % 5) * 0.12;
+
+      const emberGrad = ctx.createRadialGradient(px, py, 0, px, py, pr * 2.5);
+      emberGrad.addColorStop(0, `rgba(255, 220, 100, ${alpha})`);
+      emberGrad.addColorStop(0.4, `rgba(255, 80, 0, ${alpha * 0.8})`);
+      emberGrad.addColorStop(1, "transparent");
+
+      ctx.fillStyle = emberGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, pr * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   // 4. Esports Shield Base
   const shieldW = w * 0.62;
@@ -441,8 +923,8 @@ function drawFreeFireLogo(
   ctx.fillText(title, cx, bannerY + bannerH / 2);
   ctx.restore();
 
-  // 8. Subtitle Tag (e.g. "FREE FIRE BATTLEGROUNDS")
-  const subText = subtitle || "FREE FIRE BATTLEGROUNDS • PRO ESPORTS";
+  // 8. Subtitle Tag (Clean, no invented game names unless requested)
+  const subText = subtitle || "OFFICIAL ESPORTS BRAND IDENTITY";
   ctx.save();
   ctx.fillStyle = "#ffd27d";
   ctx.font = `bold ${Math.floor(w * 0.024)}px 'Plus Jakarta Sans', sans-serif`;
@@ -2035,33 +2517,36 @@ function drawCompanyLogo(
   h: number,
   title: string,
   subtitle?: string,
-  pal: typeof PALETTES.emerald = PALETTES.emerald
+  pal: typeof PALETTES.emerald = PALETTES.emerald,
+  transparentBg: boolean = false
 ) {
   const cx = w / 2;
   const cy = h * 0.42;
 
-  // Dark Minimalist Luxury Slate Background
-  const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
-  bgGrad.addColorStop(0, "#121722");
-  bgGrad.addColorStop(0.6, "#0a0c12");
-  bgGrad.addColorStop(1, "#050608");
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
+  if (!transparentBg) {
+    // Dark Minimalist Luxury Slate Background
+    const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, "#121722");
+    bgGrad.addColorStop(0.6, "#0a0c12");
+    bgGrad.addColorStop(1, "#050608");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
-  // Subtle Corporate Grid Lines
-  ctx.strokeStyle = "rgba(0, 212, 160, 0.06)";
-  ctx.lineWidth = 1;
-  for (let x = 0; x < w; x += 50) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-  }
-  for (let y = 0; y < h; y += 50) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
+    // Subtle Corporate Grid Lines
+    ctx.strokeStyle = "rgba(0, 212, 160, 0.06)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
   }
 
   // Central Emblem: Interlocking Modern Hexagonal Delta Monogram
@@ -2126,7 +2611,7 @@ function drawCompanyLogo(
   // Subtitle / Industry Tagline
   ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
   ctx.fillStyle = pal.primary;
-  ctx.fillText((subtitle || "GLOBAL INNOVATION & TECHNOLOGY ENTERPRISE").toUpperCase(), cx, h * 0.78);
+  ctx.fillText((subtitle || "ENTERPRISE INNOVATION & TECHNOLOGY").toUpperCase(), cx, h * 0.78);
 
   // Verified Corporate Monogram Badge
   ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";

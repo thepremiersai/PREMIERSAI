@@ -1,5 +1,5 @@
 {
-  "name": "NEXUS AI",
+  "name": "PREMIERS AI",
   "description": "Next-generation multimodal intelligence platform with real-time web search grounding, live streaming, and creative design tools.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

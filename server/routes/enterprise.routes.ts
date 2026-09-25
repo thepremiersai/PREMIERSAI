@@ -391,7 +391,7 @@ enterpriseRouter.get("/agents", optionalAuth, (req: Request, res: Response) => {
         },
         {
           id: "agent_coder",
-          name: "Nexus Architect (Coding Agent)",
+          name: "Premiers Architect (Coding Agent)",
           role: "Coding",
           systemPrompt: "Self-healing code auditor, AST refactoring specialist, and API contract generator.",
           tools: ["TypeScript Compiler", "Test Generator", "Dead-Code Eliminator", "DB Schema Visualizer"],

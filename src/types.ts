@@ -45,6 +45,7 @@ export interface Message {
   languageCode?: string;
   isRTL?: boolean;
   attachments?: Attachment[];
+  visualBrief?: any;
   isError?: boolean;
 }
 

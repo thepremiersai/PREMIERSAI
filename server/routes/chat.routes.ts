@@ -1,12 +1,125 @@
 import { Router, Request, Response } from "express";
 import { db, logAuditEvent, recordUsageMetric, moveToRecycleBin } from "../db";
 import { optionalAuth, requireAuth, createRateLimiter } from "../auth";
-import { getGenAI, generateAIContent, generateAIContentStream } from "../gemini";
+import { getGenAI, generateAIContent, generateAIContentStream, generateAIAudio, transcribeAIAudio, enhanceAIPrompt } from "../gemini";
 
 export const chatRouter = Router();
 
 // Rate limiter for chat completions (up to 40 per min per IP)
 const chatLimiter = createRateLimiter(60 * 1000, 40, "Chat request rate limit exceeded. Please wait a moment.");
+
+// ==========================================
+// FEATURE: AI TEXT-TO-SPEECH (GEMINI TTS)
+// ==========================================
+chatRouter.post("/tts", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { text, voice } = req.body;
+    if (!text || typeof text !== "string") {
+      res.status(400).json({ error: "Text is required for TTS." });
+      return;
+    }
+    const audioData = await generateAIAudio(text, voice || "Kore");
+    if (!audioData) {
+      res.status(503).json({ error: "AI Speech audio temporarily unavailable." });
+      return;
+    }
+    if (req.user) recordUsageMetric(req.user.id, "ai_query", 1);
+    res.json({
+      audioUrl: `data:${audioData.mimeType};base64,${audioData.audioBase64}`,
+      mimeType: audioData.mimeType,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to generate AI speech." });
+  }
+});
+
+// ==========================================
+// FEATURE: AI AUDIO TRANSCRIBE (GEMINI STT)
+// ==========================================
+chatRouter.post("/transcribe", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { audioBase64, mimeType } = req.body;
+    if (!audioBase64) {
+      res.status(400).json({ error: "Audio base64 data is required." });
+      return;
+    }
+    const cleanBase64 = audioBase64.includes(",") ? audioBase64.split(",")[1] : audioBase64;
+    const text = await transcribeAIAudio(cleanBase64, mimeType || "audio/webm");
+    if (!text) {
+      res.status(503).json({ error: "Voice transcription temporarily unavailable." });
+      return;
+    }
+    if (req.user) recordUsageMetric(req.user.id, "ai_query", 1);
+    res.json({ text });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to transcribe audio." });
+  }
+});
+
+// ==========================================
+// FEATURE: AI PROMPT ENHANCER
+// ==========================================
+chatRouter.post("/enhance-prompt", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt || typeof prompt !== "string") {
+      res.status(400).json({ error: "Prompt string is required." });
+      return;
+    }
+    const enhanced = await enhanceAIPrompt(prompt);
+    res.json({ enhancedPrompt: enhanced || prompt });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to enhance prompt." });
+  }
+});
+
+function extractServerBrandName(text: string): { brandName: string; isGaming: boolean; isAutomotive: boolean; isLuxury: boolean } {
+  const lower = text.toLowerCase();
+  const isGaming = /\bff\b/i.test(lower) || lower.includes("free fire") || lower.includes("gaming") || lower.includes("esports") || lower.includes("clan");
+  const isAutomotive = lower.includes("motor") || lower.includes("automotive") || lower.includes("car") || lower.includes("racing");
+  const isLuxury = lower.includes("luxury") || lower.includes("royal") || lower.includes("gold") || lower.includes("jewelry");
+
+  // Check explicit naming / naam
+  const namingMatch = text.match(/\b(?:naming|named|name is|name:|naam)\s*[:=\-]?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
+  if (namingMatch && namingMatch[1].trim()) {
+    let name = namingMatch[1].trim().replace(/\b(hai|hoga|rakho|ka|ki|ke|plz|please|banao|chahiye)\b$/gi, "").trim();
+    if (name && !["naming", "naam", "logo"].includes(name.toLowerCase())) {
+      const formatted = name.toUpperCase() === name ? name : name.replace(/\b\w/g, (l) => l.toUpperCase());
+      return { brandName: formatted, isGaming, isAutomotive, isLuxury };
+    }
+  }
+
+  // Check quoted string
+  const quoted = text.match(/["'“]([^"'”]+)["'”]/);
+  if (quoted && quoted[1].trim()) {
+    return { brandName: quoted[1].trim(), isGaming, isAutomotive, isLuxury };
+  }
+
+  // Check "ke naam ka"
+  const keNaam = text.match(/([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})\s+ke\s+naam\s+(?:ka|se|ki)\b/i);
+  if (keNaam && keNaam[1].trim()) {
+    return { brandName: keNaam[1].trim(), isGaming, isAutomotive, isLuxury };
+  }
+
+  // Check "X ka logo"
+  const kaLogo = text.match(/([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})\s+(?:ka|ki|ke)\s+logo\b/i);
+  if (kaLogo && kaLogo[1].trim()) {
+    return { brandName: kaLogo[1].trim(), isGaming, isAutomotive, isLuxury };
+  }
+
+  // Check "for X"
+  const forMatch = text.match(/\bfor\s+(?:my\s+)?(?:youtube\s+channel|channel|clan|team|startup|business|company)?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
+  if (forMatch && forMatch[1].trim()) {
+    return { brandName: forMatch[1].trim(), isGaming, isAutomotive, isLuxury };
+  }
+
+  return {
+    brandName: isGaming ? "YASIR FF" : isAutomotive ? "ZAID MOTORS" : "PREMIERS AI",
+    isGaming,
+    isAutomotive,
+    isLuxury,
+  };
+}
 
 // Language and Script detection
 export function detectLanguageAndScript(text: string): {
@@ -193,34 +306,104 @@ export function executeTask(inputData?: any) {
 **Key Features:**
 - Complete type safety and defensive error handling.
 - Modular architecture ready for immediate integration.`;
-  } else if (lower.includes("logo") || lower.includes("company") || lower.includes("brand") || lower.includes("design")) {
+  } else if (lower.includes("logo") || lower.includes("company") || lower.includes("brand") || lower.includes("design") || lower.includes("naming") || lower.includes("naam")) {
+    const { brandName, isGaming, isAutomotive, isLuxury } = extractServerBrandName(userText);
+    if (isGaming) {
+      if (isRomanUrdu) {
+        return `### 🎮 Professional Gaming & Esports Visual Identity: **${brandName}**
+
+Aap ke gaming brand **${brandName}** ke liye high-definition competitive esports crest tayar kiya gaya hai:
+
+1. **Esports Warrior Shield & Mascot Silhouette**:
+   - Dynamic angular crest aur cyber-armor visor with piercing glowing cyan eyes.
+   - Profile-picture size (Discord, YouTube Gaming, Steam) par 100% optical balance aur clear silhouette.
+
+2. **Typography & Brand Preservation**:
+   - Exact brand name **"${brandName}"** ko 3D extruded metallic lettering mein render kiya gaya hai.
+   - Zero generic font usage; custom esports display kerning with chamfered cuts.
+
+3. **Color Harmony & Export Readiness**:
+   - Competitive Crimson Fire & Ember Gold with Cyan eye illumination.
+   - Studio Dark aur Transparent PNG dono formats preview aur download ke liye tayar hain!
+
+Aap ka custom gaming visual asset aur mini brand brief neeche render ho chuka hai!`;
+      } else {
+        return `### 🎮 Professional Gaming & Esports Brand Identity: **${brandName}**
+
+Here is a world-class competitive esports visual identity engineered specifically for **${brandName}**:
+
+1. **Esports Silhouette & Dynamic Crest**:
+   - Angular battle-ready tournament shield featuring an original cyber-warrior mask with piercing cyan specular illumination.
+   - Engineered for instant recognition at profile-avatar dimensions (Discord, YouTube Gaming, Steam, Twitch).
+
+2. **Strict Brand Name Preservation**:
+   - The exact brand name **"${brandName}"** has been preserved with zero extraneous words.
+   - High-impact 3D extruded lettering with faceted metallic chamfers.
+
+3. **Color Direction & Transparent Asset**:
+   - Competitive fire orange and crimson against deep titanium slate.
+   - Both high-contrast studio presentation and 100% transparent PNG modes are ready to download below.`;
+      }
+    }
+
+    if (isAutomotive || isLuxury) {
+      if (isRomanUrdu) {
+        return `### 🏎️ Luxury & High-Performance Marque Identity: **${brandName}**
+
+Aap ke marque **${brandName}** ke liye aerodynamic luxury identity concept tayar kiya gaya hai:
+
+1. **Aerodynamic Winged Crest**:
+   - Swept-wing precision emblem jo velocity aur mechanical mastery ko symbolize karta hai.
+   - Steering wheel badge aur showroom signage ke liye mathematically balanced proportions.
+
+2. **Typography & Styling**:
+   - Forward-slanted italicized precision grotesque typeface with high contrast.
+   - Racing Crimson aur Brushed Platinum Silver accents.
+
+Aap ka brand asset aur vector specifications neeche tayar hain!`;
+      } else {
+        return `### 🏎️ Luxury & High-Performance Marque Identity: **${brandName}**
+
+Here is an executive-grade automotive brand identity engineered for **${brandName}**:
+
+1. **Aerodynamic Swept-Wing Marque**:
+   - Precision chrome emblem flanked by symmetrical swept wings symbolizing velocity and engineering poise.
+   - Proportioned for vehicle grilles, steering wheel hubs, and digital interfaces.
+
+2. **Typography & Color Harmony**:
+   - Dynamic forward-slanted precision grotesque with high optical clarity.
+   - Racing Crimson and Platinum Silver against carbon-weave dark tones.
+
+Your high-definition brand asset has been rendered below.`;
+      }
+    }
+
     if (isRomanUrdu) {
-      return `### 🏢 Modern Company Logo & Brand Identity
+      return `### 🏢 Modern Brand Identity & Vector Architecture: **${brandName}**
 
-Aap ke brand aur company ke liye ek high-definition professional visual identity concept tayar kiya gaya hai:
+Aap ke enterprise **${brandName}** ke liye world-class visual identity architecture tayar ki gayi hai:
 
-1. **Brand Aesthetics & Color Harmony**:
-   - Primary: Deep Titanium Slate & High-Precision Emerald (#00d4a0)
-   - Secondary: Electric Cyan (#00b8d4) & Platinum White
-   - Typography: Clean Modern Geometric Sans (Plus Jakarta Sans)
-
-2. **Logo Guidelines**:
-   - Minimalist vector geometric mark jo har scale par clear rehta hai.
-   - 4K resolution render aur transparent asset readiness.
-
-Aap ka custom visual asset render ho chuka hai!`;
-    } else {
-      return `### 🏢 Modern Corporate Identity & Company Logo
-
-Here is a world-class visual identity architecture engineered for your organization:
-
-1. **Vector Geometry & Harmony**:
-   - Interlocking precision monogram symbolizing technological velocity and enterprise stability.
-   - Clean, balanced negative space passing all optical clarity benchmarks.
+1. **Vector Geometry & Negative Space**:
+   - Interlocking precision monogram mark jo innovation aur stability ko represent karta hai.
+   - Har scale par optical clarity aur balance.
 
 2. **Color Palette & Typography**:
-   - Primary: High-Contrast Emerald Accent (#00d4a0) with Titanium Dark Slate.
-   - Subtitle: Verified Brand Identifier with ultra-sharp kerning.
+   - Emerald Teal (#00d4a0) aur Titanium Dark Slate.
+   - Plus Jakarta Sans Bold typography with balanced tracking.
+
+Aap ka brand asset aur mini brief neeche tayar hai!`;
+    } else {
+      return `### 🏢 Modern Brand Identity & Vector Architecture: **${brandName}**
+
+Here is a world-class visual identity architecture engineered for **${brandName}**:
+
+1. **Geometric Vector Mark**:
+   - Interlocking precision delta nodes symbolizing intelligence, structural stability, and forward momentum.
+   - Balanced negative space passing all optical clarity benchmarks.
+
+2. **Color Palette & Typography**:
+   - High-Contrast Emerald Accent (#00d4a0) with Titanium Dark Slate.
+   - Verified Brand Identifier with ultra-sharp kerning.
 
 Your high-definition corporate brand visual has been rendered below.`;
     }
@@ -262,20 +445,12 @@ Bataiye agay kya karna chahte hain?`;
   } else if (isChinese) {
     return `您好！已分析您的需求：“${userText}”。我能够协助您完成代码编写、多语言翻译、实时搜索及专业技术咨询。`;
   } else {
-    return `Hello! I have processed your request regarding "${userText}".
-
-I can immediately assist you with:
-- **Live Web Research & Fact Checking**: Real-time information with verified sources and citations.
-- **Interactive Web Development**: Responsive web applications with live code generation.
-- **Software Engineering**: Full-stack TypeScript, modern JavaScript, Python, algorithms, and bug fixing.
-- **Multilingual Communication**: Fluent comprehension across 100+ global languages.
-
-How would you like to proceed?`;
+    return `I am PREMIERS AI. How can I assist you with your research, engineering, or creative goals?`;
   }
 }
 
 export const MODE_INSTRUCTIONS: Record<string, string> = {
-  general: "You are an all-around intelligent companion, adaptive to any domain or creative request.",
+  general: "You are PREMIERS AI, an all-around unified intelligent engine, adaptive to any domain or creative request.",
   writing: "You are a master creative writer, editor, and wordsmith. Focus on literary tone, captivating narrative, precise vocabulary, compelling pacing, and flawless grammar.",
   coding: "You are a principal software architect. Provide clean, robust, production-grade code, complete error handling, TypeScript safety, modular design, and step-by-step logic.",
   research: "You are an exhaustive research specialist. Provide structured citations, empirical findings, balanced perspectives, methodology breakdowns, and factual precision.",
@@ -287,18 +462,24 @@ export const MODE_INSTRUCTIONS: Record<string, string> = {
   tech_support: "You are an expert technical diagnostician. Provide clear, empathetic, numbered troubleshooting steps, root cause explanations, and verification tests."
 };
 
-const SYSTEM_INSTRUCTION = `You are PREMIERS AI, a world-class universal AI assistant founded by Syed Muhammad Yasir Abbas Zaidi (CEO & Founder of PREMIERS).
+const SYSTEM_INSTRUCTION = `You are PREMIERS AI, the unified next-generation universal multimodal intelligence platform founded by Syed Muhammad Yasir Abbas Zaidi (CEO & Founder of PREMIERS).
 
-CORE DIRECTIVES:
-1. GLOBAL MULTILINGUAL INTELLIGENCE:
-- Automatically detect language.
-- Reply in the EXACT SAME LANGUAGE and dialect used by the user by default (English, Urdu in Nastaliq, Roman Urdu in natural conversational Latin text, Arabic, Persian, Hebrew, Hindi, Chinese, French, Spanish, German, etc.).
-- Strictly respect explicit language overrides.
-- Seamlessly preserve conversational context when users switch languages mid-conversation.
-2. CREATIVE TOOLS & CODE:
-- Provide rich structured responses with markdown, code snippets, visual descriptions, and step-by-step guidance.
-3. UNICODE & ENCODING:
-- Maintain clean UTF-8 text representation across all scripts.`;
+You are ONE single unified intelligence engine. The user experiences only PREMIERS AI.
+
+CORE PRINCIPLES:
+1. DIRECT, FACTUAL & MATHEMATICAL ACCURACY:
+- For calculations (e.g. "What is 25 * 48?"), compute the exact mathematical answer immediately (1,200) without evasion or placeholder text.
+- For definitions, science, history, and questions (e.g. "Explain artificial intelligence"), provide insightful, well-structured, comprehensive answers.
+- For coding queries, write clean, robust, modern, production-grade code with TypeScript/language best practices.
+- For research inquiries, provide exhaustive multi-part analysis with clear takeaways.
+
+2. GLOBAL MULTILINGUAL CAPABILITY:
+- Automatically detect the user's language.
+- Respond fluently in the EXACT SAME LANGUAGE and script used by the user by default (English, Urdu in Nastaliq script, Roman Urdu in natural conversational Latin text, Arabic, Hindi, Persian, French, Spanish, German, Chinese, etc.).
+- Never lecture the user on language selection; reply directly and naturally.
+
+3. ZERO PLACEHOLDERS:
+- Never return canned fake responses like "I have processed your request" or "How else can I assist you today?". Always deliver real, substantive content.`;
 
 // ==========================================
 // FEATURE 2: CONVERSATION FOLDERS
@@ -860,7 +1041,7 @@ chatRouter.post("/messages/:id/action", optionalAuth, async (req: Request, res: 
 
 // POST /api/chat/stream - Real-time Server-Sent Events Streaming Chat Handler
 chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: Response): Promise<void> => {
-  const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch } = req.body;
+  const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking } = req.body;
 
   if (!message && (!attachments || attachments.length === 0)) {
     res.status(400).json({ error: "Message content or attachment is required." });
@@ -873,6 +1054,7 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
   const autoWebSearch = detectCurrentInformationIntent(userText);
   const webSearchNeeded = Boolean(webSearch) || autoWebSearch;
   const factCheck = isFactCheckQuery(userText);
+  const thinkingLevel: "HIGH" | undefined = deepThinking ? "HIGH" : undefined;
 
   // Set up SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -976,7 +1158,15 @@ ${factCheck ? `FACT CHECKING MANDATE:
 ${webSearchNeeded ? `REAL-TIME WEB SEARCH & CITATIONS MANDATE:
 - Use Google Search Grounding to provide real-time, up-to-date accurate information.
 - Cite specific publications, official organizations, or company announcements when applicable.
-- Never invent URLs or pretend to browse nonexistent pages.` : ""}`;
+- Never invent URLs or pretend to browse nonexistent pages.` : ""}
+${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot)\b/i.test(userText) ? `VISUAL INTENT & PROFESSIONAL LOGO DESIGN MANDATE:
+- The user is requesting a brand logo or visual identity.
+- ACCURATELY EXTRACT THE BRAND NAME: Never confuse instruction words like "naming", "naam", "logo", "called", "banao", "ke naam ka" as the brand itself!
+- For requests like "Logo banao, naming YASIR FF", the brand name is "YASIR FF". The word "naming" is a directive specifying the brand, and MUST NOT appear in the brand or design.
+- EXACT BRAND NAME PRESERVATION: If user gives "YASIR FF", preserve "YASIR FF" exactly. Do not invent extra words like "YASIR FREE FIRE" or "YASIR ESPORTS" unless explicitly requested.
+- GAMING & "FF" CONTEXT: Recognize "FF" in gaming context as Free Fire / esports gaming. Provide an original, high-octane competitive identity with clean geometry, aggressive silhouette, and profile-avatar clarity.
+- NOT JUST TEXT: Explore an actual visual identity (crest, emblem, monogram, or combination mark).
+- Provide a structured Mini Brand Brief detailing: Brand Identity, Symbolism, Typography, Color Palette, and Scalability.` : ""}`;
 
   // Build contents history
   const contents: any[] = [];
@@ -1026,6 +1216,7 @@ ${webSearchNeeded ? `REAL-TIME WEB SEARCH & CITATIONS MANDATE:
       temperature: 0.7,
       topP: 0.95,
       enableWebSearch: webSearchNeeded,
+      thinkingLevel,
       onChunk: (chunkText) => {
         if (!clientDisconnected) {
           accumulatedText += chunkText;
@@ -1043,17 +1234,30 @@ ${webSearchNeeded ? `REAL-TIME WEB SEARCH & CITATIONS MANDATE:
     console.warn("[Chat Stream] Error during streaming:", err?.message || err);
   }
 
-  // Fallback if AI returned empty or models busy
+  // If streaming returned empty, attempt direct content generation failover
   if (!accumulatedText) {
-    const fallbackText = generateFallbackResponse(userText, detection);
-    const words = fallbackText.split(" ");
-    for (let i = 0; i < words.length; i += 4) {
-      if (clientDisconnected) break;
-      const chunk = words.slice(i, i + 4).join(" ") + " ";
-      accumulatedText += chunk;
-      res.write(`data: ${JSON.stringify({ type: "chunk", text: chunk })}\n\n`);
-      await new Promise((r) => setTimeout(r, 20));
+    try {
+      const directResult = await generateAIContent({
+        contents,
+        systemInstruction: tailoredInstruction,
+        temperature: 0.7,
+        topP: 0.95,
+        enableWebSearch: false,
+        thinkingLevel,
+      });
+      if (directResult && directResult.trim()) {
+        accumulatedText = directResult.trim();
+        res.write(`data: ${JSON.stringify({ type: "chunk", text: accumulatedText })}\n\n`);
+      }
+    } catch (e: any) {
+      console.warn("[Chat Stream] Direct failover also failed:", e?.message);
     }
+  }
+
+  // If still empty after all retries, deliver honest error message rather than a fake canned reply
+  if (!accumulatedText) {
+    accumulatedText = "⚠️ PREMIERS AI is currently experiencing high demand. Please click **Retry** below to regenerate your response.";
+    res.write(`data: ${JSON.stringify({ type: "chunk", text: accumulatedText })}\n\n`);
   }
 
   const replyDetection = detectLanguageAndScript(accumulatedText);
@@ -1107,7 +1311,7 @@ ${webSearchNeeded ? `REAL-TIME WEB SEARCH & CITATIONS MANDATE:
 // POST /api/chat - Main Chat Handler
 chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch } = req.body;
+    const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking } = req.body;
 
     if (!message && (!attachments || attachments.length === 0)) {
       res.status(400).json({ error: "Message content or attachment is required." });
@@ -1119,6 +1323,7 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
     const now = Date.now();
     const autoWebSearch = detectCurrentInformationIntent(userText);
     const webSearchNeeded = Boolean(webSearch) || autoWebSearch;
+    const thinkingLevel: "HIGH" | undefined = deepThinking ? "HIGH" : undefined;
 
     // Ensure session exists in chat_sessions so foreign keys on chat_messages never fail
     if (sessionId) {
@@ -1225,6 +1430,7 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
         temperature: 0.7,
         topP: 0.95,
         enableWebSearch: webSearchNeeded,
+        thinkingLevel,
       });
 
       if (aiResult) {
@@ -1235,10 +1441,11 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
       console.log("[Chat Route] Handled generation dispatch safely");
     }
 
-    // High quality resilient contextual engine if models are experiencing peak demand (503)
     if (!replyText) {
-      replyText = generateFallbackResponse(userText, detection);
-      replyDetection = detectLanguageAndScript(replyText);
+      res.status(503).json({
+        error: "PREMIERS AI service is temporarily experiencing high demand. Please try again in a moment.",
+      });
+      return;
     }
 
     // Persist assistant message safely

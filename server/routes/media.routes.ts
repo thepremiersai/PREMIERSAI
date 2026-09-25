@@ -14,31 +14,55 @@ mediaRouter.post("/logo", optionalAuth, async (req: Request, res: Response): Pro
       return;
     }
 
-    const prompt = `You are a world-class brand identity designer. Generate a comprehensive logo & visual identity concept for:
-Brand Name: "${brandName}"
-Industry: ${industry || "Technology & AI"}
-Style Preference: ${style || "Modern Minimalist Vector"}
-Color Palette: ${colorScheme || "Emerald Teal, Deep Slate, Pure White"}
+    let cleanBrand = String(brandName).trim();
+    const namingMatch = cleanBrand.match(/\b(?:naming|named|name is|name:|naam)\s*[:=\-]?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
+    if (namingMatch && namingMatch[1].trim()) {
+      cleanBrand = namingMatch[1].trim();
+    }
+
+    const isGaming = /\bff\b/i.test(cleanBrand) || /gaming|esports|free fire/i.test(industry || "") || /gaming|esports/i.test(style || "");
+    const effectiveIndustry = industry || (isGaming ? "Gaming & Competitive Esports" : "Technology & AI");
+    const effectiveStyle = style || (isGaming ? "Competitive Esports Warrior Crest" : "Modern Minimalist Vector");
+
+    const prompt = `You are a world-class brand identity designer. Generate a comprehensive 4-concept logo & visual identity architecture for:
+Brand Name: "${cleanBrand}"
+Industry: ${effectiveIndustry}
+Style Preference: ${effectiveStyle}
+Color Palette: ${colorScheme || (isGaming ? "Fiery Crimson, Ember Gold, Cyber Cyan, Titanium Dark" : "Emerald Teal, Deep Slate, Pure White")}
 
 Output JSON only:
 {
   "concepts": [
     {
-      "name": "Concept 1: Primary Emblem",
-      "symbolDescription": "Detailed visual description of the vector icon/mark",
+      "name": "Concept 1: Primary Emblem Crest",
+      "symbolDescription": "Detailed visual description of the vector icon/mark silhouette and negative space",
       "typography": "Font pairings and kerning advice",
-      "colors": ["#00d4a0", "#0f172a", "#ffffff"],
-      "imageGenPrompt": "Exact prompt to feed into image generation models to render this logo on a clean background"
+      "colors": ["#ff5500", "#12080a", "#00ffff"],
+      "imageGenPrompt": "Exact prompt to render this logo with optical clarity"
     },
     {
       "name": "Concept 2: Geometric Monogram",
-      "symbolDescription": "Monogram visual description",
-      "typography": "Typography styling",
-      "colors": ["#3b82f6", "#1e293b", "#f8fafc"],
+      "symbolDescription": "Monogram visual description with diamond facets",
+      "typography": "Typography styling with balanced kerning",
+      "colors": ["#00d4a0", "#0a0c12", "#ffffff"],
       "imageGenPrompt": "Geometric vector monogram prompt for image generation"
+    },
+    {
+      "name": "Concept 3: Combination Mark",
+      "symbolDescription": "Vector icon over balanced horizontal wordmark",
+      "typography": "Clean geometric sans with wide tracking",
+      "colors": ["#38bdf8", "#0f172a", "#f8fafc"],
+      "imageGenPrompt": "Modern combination mark prompt"
+    },
+    {
+      "name": "Concept 4: Tournament Insignia Seal",
+      "symbolDescription": "Hexagonal seal badge with micro-metric borders",
+      "typography": "Heavyweight industrial display typeface",
+      "colors": ["#e2b144", "#18181c", "#fafafa"],
+      "imageGenPrompt": "Tournament seal badge prompt"
     }
   ],
-  "brandPhilosophy": "A 2-sentence rationale explaining the emotional resonance of this identity."
+  "brandPhilosophy": "A 2-sentence rationale explaining the emotional resonance and profile-picture recognition of this identity."
 }`;
 
     let data: any = null;
