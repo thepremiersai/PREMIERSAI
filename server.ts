@@ -118,6 +118,9 @@ app.use("/api/enterprise", enterpriseRouter);
 
 // Start server with Vite middleware in development or static dist in production
 async function startServer() {
+  const publicPath = path.join(process.cwd(), "public");
+  app.use(express.static(publicPath));
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

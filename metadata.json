@@ -1,6 +1,6 @@
 {
   "name": "PREMIERS AI",
-  "description": "Next-generation multimodal intelligence platform with real-time web search grounding, live streaming, and creative design tools.",
+  "description": "PREMIERS AI is an intelligent AI assistant for conversations, creative design, image generation, research, web intelligence, productivity and more.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

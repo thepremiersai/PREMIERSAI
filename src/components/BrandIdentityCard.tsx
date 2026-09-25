@@ -11,8 +11,12 @@ import {
   ChevronUp,
   Maximize2,
   X,
+  Type,
+  Sun,
+  Moon,
+  Sparkle,
 } from "lucide-react";
-import { VisualIntentResult, generateLogoSvg } from "../lib/visualIntentEngine";
+import { VisualIntentResult, LogoConceptId, DesignStyleId, generateLogoSvg } from "../lib/visualIntentEngine";
 import { generateCreativeGraphic } from "../lib/creativeGenerator";
 
 interface BrandIdentityCardProps {
@@ -20,41 +24,64 @@ interface BrandIdentityCardProps {
 }
 
 export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
-  const [selectedConceptId, setSelectedConceptId] = useState<"emblem" | "monogram" | "combination" | "badge">("emblem");
-  const [isTransparent, setIsTransparent] = useState(false);
+  const [selectedConceptId, setSelectedConceptId] = useState<LogoConceptId>(
+    intent.selectedConceptId || "wordmark"
+  );
+  const [selectedStyle, setSelectedStyle] = useState<DesignStyleId>(intent.style || "modern");
+  const [bgMode, setBgMode] = useState<"dark" | "light" | "transparent">(
+    intent.palette.isLightMode ? "light" : "dark"
+  );
   const [briefOpen, setBriefOpen] = useState(false);
   const [copiedSvg, setCopiedSvg] = useState(false);
   const [fullscreenModal, setFullscreenModal] = useState(false);
 
-  // Generate real-time preview image based on active concept and transparency mode
+  // Active palette adjusted for light/dark/transparent mode
+  const effectivePalette = useMemo(() => {
+    return {
+      ...intent.palette,
+      isLightMode: bgMode === "light",
+      isTransparent: bgMode === "transparent",
+    };
+  }, [intent.palette, bgMode]);
+
+  // Generate real-time preview image based on active concept, style, and background mode
   const activeImageUrl = useMemo(() => {
     return generateCreativeGraphic({
       title: intent.brandName,
-      subtitle: intent.category === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : "PREMIUM BRAND IDENTITY",
+      subtitle:
+        selectedStyle === "gaming"
+          ? "OFFICIAL ESPORTS BRAND IDENTITY"
+          : selectedStyle === "luxury"
+          ? "BESPOKE LUXURY IDENTITY"
+          : "PREMIUM BRAND IDENTITY",
       category: "logo",
       theme: intent.theme as any,
       conceptId: selectedConceptId,
+      style: selectedStyle,
+      typography: intent.typography,
       initials: intent.initials,
-      customPalette: intent.palette as any,
-      transparentBg: isTransparent,
+      customPalette: effectivePalette,
+      transparentBg: bgMode === "transparent",
       width: 1024,
       height: 1024,
     });
-  }, [intent, selectedConceptId, isTransparent]);
+  }, [intent, selectedConceptId, selectedStyle, effectivePalette, bgMode]);
 
-  // Generate SVG code
+  // Generate scalable SVG code
   const activeSvgCode = useMemo(() => {
     return generateLogoSvg(
       intent.brandName,
       intent.initials,
-      intent.category,
-      intent.palette,
-      isTransparent
+      selectedConceptId,
+      effectivePalette,
+      bgMode === "transparent",
+      selectedStyle
     );
-  }, [intent, selectedConceptId, isTransparent]);
+  }, [intent, selectedConceptId, effectivePalette, bgMode, selectedStyle]);
 
   // Active concept details
-  const activeConcept = intent.concepts.find((c) => c.id === selectedConceptId) || intent.concepts[0];
+  const activeConcept =
+    intent.concepts.find((c) => c.id === selectedConceptId) || intent.concepts[0];
 
   const handleCopySvg = () => {
     navigator.clipboard.writeText(activeSvgCode);
@@ -66,12 +93,19 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
     const url = transparentOnly
       ? generateCreativeGraphic({
           title: intent.brandName,
-          subtitle: intent.category === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : "PREMIUM BRAND IDENTITY",
+          subtitle:
+            selectedStyle === "gaming"
+              ? "OFFICIAL ESPORTS BRAND IDENTITY"
+              : selectedStyle === "luxury"
+              ? "BESPOKE LUXURY IDENTITY"
+              : "PREMIUM BRAND IDENTITY",
           category: "logo",
           theme: intent.theme as any,
           conceptId: selectedConceptId,
+          style: selectedStyle,
+          typography: intent.typography,
           initials: intent.initials,
-          customPalette: intent.palette as any,
+          customPalette: { ...effectivePalette, isTransparent: true },
           transparentBg: true,
           width: 1024,
           height: 1024,
@@ -80,7 +114,9 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
 
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${intent.brandName.toLowerCase().replace(/\s+/g, "-")}-${selectedConceptId}${transparentOnly ? "-transparent" : ""}.png`;
+    link.download = `${intent.brandName.toLowerCase().replace(/\s+/g, "-")}-${selectedConceptId}${
+      transparentOnly || bgMode === "transparent" ? "-transparent" : ""
+    }.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -103,49 +139,69 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
       {/* Top Header Bar */}
       <div className="px-4 py-3 bg-[#131322] border-b border-[#26263b] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] flex items-center justify-center text-black font-extrabold text-xs shadow-md shadow-[#00d4a0]/25">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] flex items-center justify-center text-black font-extrabold text-xs shadow-md shadow-[#00d4a0]/25">
             <Sparkles className="w-4 h-4 text-black" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-extrabold text-white tracking-wide">{intent.brandName}</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#00d4a0]/15 text-[#00d4a0] border border-[#00d4a0]/30">
                 {intent.category.toUpperCase()} IDENTITY
               </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                {selectedStyle.toUpperCase()}
+              </span>
             </div>
-            <p className="text-[11px] text-gray-400">Professional Brand Intelligence Engine</p>
+            <p className="text-[11px] text-gray-400">Universal Design Intelligence Engine • 10 Concept Directions</p>
           </div>
         </div>
 
-        {/* Background Mode Switcher */}
-        <div className="flex items-center gap-1.5 bg-[#1a1a2b] p-1 rounded-xl border border-[#2e2e46] text-xs">
+        {/* Background Mode Switcher (Dark, Light, Transparent) */}
+        <div className="flex items-center gap-1 bg-[#1a1a2b] p-1 rounded-xl border border-[#2e2e46] text-xs">
           <button
             type="button"
-            onClick={() => setIsTransparent(false)}
-            className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-              !isTransparent
+            onClick={() => setBgMode("dark")}
+            className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              bgMode === "dark"
                 ? "bg-[#00d4a0] text-black shadow-sm font-bold"
                 : "text-gray-400 hover:text-white"
             }`}
+            title="Studio Dark Mode"
           >
-            🌙 Studio Dark
+            <Moon className="w-3 h-3" />
+            <span>Dark</span>
           </button>
           <button
             type="button"
-            onClick={() => setIsTransparent(true)}
-            className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-              isTransparent
+            onClick={() => setBgMode("light")}
+            className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              bgMode === "light"
                 ? "bg-[#00d4a0] text-black shadow-sm font-bold"
                 : "text-gray-400 hover:text-white"
             }`}
+            title="Clean Architectural Light Mode"
           >
-            ✨ Transparent PNG
+            <Sun className="w-3 h-3" />
+            <span>Light</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setBgMode("transparent")}
+            className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              bgMode === "transparent"
+                ? "bg-[#00d4a0] text-black shadow-sm font-bold"
+                : "text-gray-400 hover:text-white"
+            }`}
+            title="100% Transparent Vector Asset"
+          >
+            <Sparkle className="w-3 h-3" />
+            <span>Alpha PNG</span>
           </button>
         </div>
       </div>
 
-      {/* Concept Switcher Tabs */}
-      <div className="px-4 py-2 bg-[#0e0e1a] border-b border-[#222236] flex items-center gap-2 overflow-x-auto card-scroll">
+      {/* Concept Switcher Tabs (All 10 Concepts) */}
+      <div className="px-4 py-2 bg-[#0e0e1a] border-b border-[#222236] flex items-center gap-1.5 overflow-x-auto card-scroll">
         <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1 shrink-0 mr-1">
           <Layers className="w-3.5 h-3.5 text-[#00d4a0]" /> Concepts:
         </span>
@@ -156,7 +212,7 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
               key={concept.id}
               type="button"
               onClick={() => setSelectedConceptId(concept.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 isActive
                   ? "bg-gradient-to-r from-[#00d4a0] to-[#00b8d4] text-black shadow-md shadow-[#00d4a0]/25"
                   : "bg-[#181828] text-gray-300 hover:text-white hover:bg-[#222238] border border-[#2b2b40]"
@@ -173,11 +229,11 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
         {/* Render Canvas / Image Display */}
         <div className="relative group w-full md:w-80 max-w-[340px] aspect-square rounded-2xl overflow-hidden border border-[#2a2a40] shadow-2xl flex items-center justify-center shrink-0">
           {/* Transparency grid backdrop when in transparent mode */}
-          {isTransparent && (
+          {bgMode === "transparent" && (
             <div
               className="absolute inset-0 opacity-20"
               style={{
-                backgroundImage: `linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%)`,
+                backgroundImage: `linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)`,
                 backgroundSize: "16px 16px",
                 backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
               }}
@@ -200,9 +256,9 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
             <Maximize2 className="w-4 h-4" />
           </button>
 
-          {isTransparent && (
+          {bgMode === "transparent" && (
             <div className="absolute bottom-2.5 left-2.5 z-20 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[10px] font-bold text-[#00d4a0] border border-[#00d4a0]/30">
-              Transparent Asset
+              100% Transparent
             </div>
           )}
         </div>
@@ -219,6 +275,25 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
             <p className="text-xs text-gray-300 mt-1 leading-relaxed">{activeConcept.description}</p>
           </div>
 
+          {/* Style Tuner Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            <span className="text-[11px] text-gray-400 font-semibold mr-1">Design Style:</span>
+            {(["minimal", "modern", "luxury", "gaming", "vintage", "playful"] as DesignStyleId[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSelectedStyle(s)}
+                className={`px-2 py-0.5 rounded-md text-[11px] font-bold capitalize transition-all cursor-pointer ${
+                  selectedStyle === s
+                    ? "bg-[#00d4a0]/20 text-[#00d4a0] border border-[#00d4a0]/50"
+                    : "bg-[#161624] text-gray-400 hover:text-white border border-[#262638]"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
           {/* Specifications Checklist */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-gray-300 bg-[#121220] p-3 rounded-xl border border-[#222236]">
             <div className="flex items-center gap-1.5">
@@ -230,19 +305,19 @@ export function BrandIdentityCard({ intent }: BrandIdentityCardProps) {
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-[#00d4a0] shrink-0" />
               <span>
-                <strong className="text-white">Monogram:</strong> {intent.initials}
+                <strong className="text-white">Initial Lettermark:</strong> {intent.initials}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Type className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span>
+                <strong className="text-white">Typography:</strong> {activeConcept.typographyStyle}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-[#00d4a0] shrink-0" />
               <span>
-                <strong className="text-white">Silhouette:</strong> 100% Optical Balance
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#00d4a0] shrink-0" />
-              <span>
-                <strong className="text-white">Profile Ready:</strong> Discord, YT, Steam
+                <strong className="text-white">Scalability:</strong> 16px to 4K Ultra-Crisp
               </span>
             </div>
           </div>

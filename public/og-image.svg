@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07070a" />
+      <stop offset="50%" stop-color="#0a0a14" />
+      <stop offset="100%" stop-color="#050508" />
+    </linearGradient>
+    <linearGradient id="premiersGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e6a8" />
+      <stop offset="50%" stop-color="#00d4a0" />
+      <stop offset="100%" stop-color="#00b4d8" />
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#00d4a0" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#00d4a0" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Deep Obsidian Space Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+  <rect width="1200" height="630" fill="url(#centerGlow)" />
+
+  <!-- Subtle Tech Grid Lines -->
+  <g stroke="rgba(0, 212, 160, 0.07)" stroke-width="1">
+    <line x1="0" y1="105" x2="1200" y2="105" />
+    <line x1="0" y1="210" x2="1200" y2="210" />
+    <line x1="0" y1="315" x2="1200" y2="315" />
+    <line x1="0" y1="420" x2="1200" y2="420" />
+    <line x1="0" y1="525" x2="1200" y2="525" />
+    <line x1="200" y1="0" x2="200" y2="630" />
+    <line x1="400" y1="0" x2="400" y2="630" />
+    <line x1="600" y1="0" x2="600" y2="630" />
+    <line x1="800" y1="0" x2="800" y2="630" />
+    <line x1="1000" y1="0" x2="1000" y2="630" />
+  </g>
+
+  <!-- Center Logo Emblem (Squircle) -->
+  <g transform="translate(536, 90)">
+    <rect width="128" height="128" rx="28" fill="url(#premiersGrad)" />
+    <rect x="2" y="2" width="124" height="124" rx="26" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+    <path d="M 42 32 L 74 32 C 90 32, 100 42, 100 58 C 100 74, 90 84, 74 84 L 60 84 L 60 100 L 42 100 Z M 60 48 L 60 68 L 72 68 C 80 68, 84 64, 84 58 C 84 52, 80 48, 72 48 Z" fill="#ffffff" />
+    <circle cx="94" cy="94" r="5" fill="#ffffff" />
+  </g>
+
+  <!-- Brand Typography -->
+  <text x="600" y="278" text-anchor="middle" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="900" font-size="52" fill="#ffffff" letter-spacing="3">PREMIERS AI</text>
+  
+  <text x="600" y="325" text-anchor="middle" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="700" font-size="22" fill="#00d4a0" letter-spacing="2">INTELLIGENT AI ASSISTANT</text>
+
+  <!-- Tagline / Value Proposition -->
+  <text x="600" y="380" text-anchor="middle" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="400" font-size="20" fill="#94a3b8" letter-spacing="0.5">Conversations • Creative Design • AI Image Generation • Research • Web Intelligence</text>
+
+  <!-- Capability Badges -->
+  <g transform="translate(190, 435)">
+    <!-- Badge 1 -->
+    <rect x="0" y="0" width="180" height="42" rx="21" fill="rgba(0, 212, 160, 0.12)" stroke="rgba(0, 212, 160, 0.3)" stroke-width="1.5" />
+    <text x="90" y="27" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-size="14" fill="#00d4a0">Multilingual Chat</text>
+
+    <!-- Badge 2 -->
+    <rect x="210" y="0" width="190" height="42" rx="21" fill="rgba(0, 212, 160, 0.12)" stroke="rgba(0, 212, 160, 0.3)" stroke-width="1.5" />
+    <text x="305" y="27" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-size="14" fill="#00d4a0">AI Creative Studio</text>
+
+    <!-- Badge 3 -->
+    <rect x="430" y="0" width="180" height="42" rx="21" fill="rgba(0, 212, 160, 0.12)" stroke="rgba(0, 212, 160, 0.3)" stroke-width="1.5" />
+    <text x="520" y="27" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-size="14" fill="#00d4a0">Live Web Grounding</text>
+
+    <!-- Badge 4 -->
+    <rect x="640" y="0" width="180" height="42" rx="21" fill="rgba(0, 212, 160, 0.12)" stroke="rgba(0, 212, 160, 0.3)" stroke-width="1.5" />
+    <text x="730" y="27" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-size="14" fill="#00d4a0">Code &amp; Prototyping</text>
+  </g>
+
+  <!-- Canonical URL stamp -->
+  <text x="600" y="550" text-anchor="middle" font-family="'Plus Jakarta Sans', monospace" font-weight="500" font-size="16" fill="#64748b">https://premiersaihomepage.ai.studio/</text>
+</svg>

@@ -1,0 +1,22 @@
+# PREMIERS AI — Production Search Engine Directives
+# https://premiersaihomepage.ai.studio/
+
+User-agent: *
+Allow: /
+Allow: /favicon.ico
+Allow: /favicon.png
+Allow: /favicon-32x32.png
+Allow: /favicon-48x48.png
+Allow: /apple-touch-icon.png
+Allow: /android-chrome-192x192.png
+Allow: /android-chrome-512x512.png
+Allow: /og-image.png
+Allow: /site.webmanifest
+Allow: /sitemap.xml
+
+# Protect authenticated/administrative/private endpoints
+Disallow: /api/admin/
+Disallow: /api/auth/
+Disallow: /api/payments/
+
+Sitemap: https://premiersaihomepage.ai.studio/sitemap.xml

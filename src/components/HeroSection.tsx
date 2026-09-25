@@ -127,21 +127,30 @@ export function HeroSection({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00d4a0] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00d4a0]"></span>
           </span>
-          <span>Universal Multilingual AI & Procedural Visual Studio</span>
+          <span>PREMIERS AI — Intelligent AI Assistant &amp; Creative Intelligence</span>
         </div>
 
-        {/* Shortened, Punchy Hero Title */}
+        {/* Canonical Title */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white mb-5 leading-tight sm:leading-none">
-          Universal AI for{" "}
+          PREMIERS AI —{" "}
           <span className="bg-gradient-to-r from-[#00d4a0] via-[#00e8b0] to-[#00b8d4] bg-clip-text text-transparent">
-            Every Language & Vision
+            Intelligent AI Assistant
           </span>
         </h1>
 
-        {/* Shortened, Clear Hero Subtitle */}
-        <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-8 font-normal leading-relaxed">
-          Speak 100+ languages, craft custom company logos, generate photorealistic visual art, and build interactive web apps with live code.
+        {/* Official Crawlable Description */}
+        <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-6 font-normal leading-relaxed">
+          PREMIERS AI is an intelligent AI assistant designed to help users with conversations, research, creative work, image generation, visual design, information discovery and productivity.
         </p>
+
+        {/* Natural SEO Capabilities & Highlights */}
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto mb-8 text-xs text-gray-300">
+          <span className="px-2.5 py-1 rounded-full bg-[#161622] border border-[#2b2b3e] text-[#00d4a0]">AI Image Generation &amp; Design</span>
+          <span className="px-2.5 py-1 rounded-full bg-[#161622] border border-[#2b2b3e] text-[#00b8d4]">Multilingual AI Chatbot (Urdu &amp; 100+ Languages)</span>
+          <span className="px-2.5 py-1 rounded-full bg-[#161622] border border-[#2b2b3e] text-purple-300">AI Research &amp; Web Search</span>
+          <span className="px-2.5 py-1 rounded-full bg-[#161622] border border-[#2b2b3e] text-amber-300">AI Productivity &amp; Code</span>
+          <span className="px-2.5 py-1 rounded-full bg-[#161622] border border-[#2b2b3e] text-emerald-300">AI Assistant Pakistan &amp; Global</span>
+        </div>
 
         {/* Action Buttons - Fully Animated */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10">

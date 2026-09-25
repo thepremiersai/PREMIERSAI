@@ -1,26 +1,22 @@
 /**
- * PREMIERS AI — ADVANCED VISUAL INTENT & PROFESSIONAL LOGO DESIGN INTELLIGENCE ENGINE
+ * PREMIERS AI — ADVANCED VISUAL INTENT & PROFESSIONAL DESIGN INTELLIGENCE ENGINE
  * 
  * Pipeline:
  * USER REQUEST
  *   ↓
- * NATURAL LANGUAGE UNDERSTANDING (Multilingual: English, Roman Urdu, Urdu, Arabic, Hindi)
+ * NATURAL LANGUAGE INTENT & STYLE DETECTION (Multilingual: English, Roman Urdu, Urdu, Arabic, Hindi)
  *   ↓
- * INTENT EXTRACTION & USER GOAL DETECTION
+ * DESIGN CATEGORY & CONCEPT SELECTION (Logos, Wordmarks, Monograms, Badges, Mascots, App Icons, Thumbnails, Posters, Photography)
  *   ↓
- * ENTITY EXTRACTION (Brand Name, Industry, Style, Purpose, Initials, Colors)
+ * STYLE IDENTIFIER ("professional", "luxury", "gaming", "modern", "minimal", "realistic", "cinematic", "cartoon", "futuristic", "vintage", "corporate", "playful", "dramatic")
  *   ↓
- * BRAND / SUBJECT PRESERVATION (Preserves "FF", never confuses "naming"/"naam"/"logo" with brand)
+ * TYPOGRAPHY INTELLIGENCE (Geometric sans, Modern sans, Serif, Display, Condensed, Handwritten, Futuristic, Luxury, Gaming, Playful)
  *   ↓
- * DESIGN CATEGORY & STRATEGY SELECTION
+ * BRAND / SUBJECT PRESERVATION (Never confuses "naming", "naam", "logo" with brand)
  *   ↓
- * MINI BRAND BRIEF GENERATION (Symbolism, Typography, Palette, Scalability, Optical Balance)
+ * MINI BRAND BRIEF GENERATION & MULTI-CONCEPT SYNTHESIS
  *   ↓
- * MULTIPLE CONCEPT DIRECTION SYNTHESIS (Emblem Crest, Monogram, Combination Mark, Geometric Badge)
- *   ↓
- * TRANSPARENT BACKGROUND & 4K RESOLUTION ENGINE
- *   ↓
- * QUALITY REVIEW & QUALITY BENCHMARKING
+ * GENUINE VECTOR SVG & TRANSPARENT PNG PRODUCTION
  */
 
 export interface ColorPalette {
@@ -32,16 +28,66 @@ export interface ColorPalette {
   text: string;
   muted: string;
   isTransparent?: boolean;
+  isLightMode?: boolean;
 }
 
+export type LogoConceptId =
+  | "emblem"
+  | "monogram"
+  | "wordmark"
+  | "lettermark"
+  | "combination"
+  | "badge"
+  | "mascot"
+  | "abstract_mark"
+  | "minimal_symbol"
+  | "app_icon";
+
+export type DesignStyleId =
+  | "professional"
+  | "luxury"
+  | "gaming"
+  | "modern"
+  | "minimal"
+  | "realistic"
+  | "cinematic"
+  | "cartoon"
+  | "futuristic"
+  | "premium"
+  | "vintage"
+  | "corporate"
+  | "colorful"
+  | "dark"
+  | "elegant"
+  | "playful"
+  | "dramatic";
+
+export type TypographyStyleId =
+  | "geometric_sans"
+  | "modern_sans"
+  | "humanist_sans"
+  | "serif"
+  | "display"
+  | "condensed"
+  | "bold_display"
+  | "handwritten"
+  | "script"
+  | "editorial"
+  | "futuristic"
+  | "technical"
+  | "luxury"
+  | "gaming"
+  | "playful";
+
 export interface LogoConcept {
-  id: "emblem" | "monogram" | "combination" | "badge";
+  id: LogoConceptId;
   title: string;
   badgeLabel: string;
   description: string;
   symbolDescription: string;
   typographyStyle: string;
   composition: string;
+  recommendedCategory: string;
 }
 
 export interface MiniBrandBrief {
@@ -49,6 +95,8 @@ export interface MiniBrandBrief {
   initials: string;
   industry: string;
   category: "gaming" | "automotive" | "tech" | "luxury" | "creator" | "corporate" | "medical" | "fitness" | "crypto" | "food" | "general";
+  style: DesignStyleId;
+  typography: TypographyStyleId;
   targetAudience: string;
   brandPersonality: string;
   visualIdentity: string;
@@ -64,12 +112,43 @@ export interface MiniBrandBrief {
 
 export interface VisualIntentResult {
   isVisualRequest: boolean;
-  designType: "logo" | "thumbnail" | "banner" | "poster" | "image";
+  designType:
+    | "logo"
+    | "wordmark"
+    | "lettermark"
+    | "monogram"
+    | "emblem"
+    | "badge"
+    | "mascot"
+    | "icon"
+    | "app_icon"
+    | "favicon"
+    | "thumbnail"
+    | "banner"
+    | "poster"
+    | "flyer"
+    | "billboard"
+    | "social_post"
+    | "social_story"
+    | "product_photo"
+    | "infographic"
+    | "character"
+    | "landscape"
+    | "sci_fi"
+    | "fantasy"
+    | "architecture"
+    | "portrait"
+    | "abstract"
+    | "pattern"
+    | "diagram"
+    | "image";
   brandName: string;
   initials: string;
   industry: string;
   category: "gaming" | "automotive" | "tech" | "luxury" | "creator" | "corporate" | "medical" | "fitness" | "crypto" | "food" | "general";
-  style: string;
+  style: DesignStyleId;
+  typography: TypographyStyleId;
+  selectedConceptId: LogoConceptId;
   purpose: string;
   theme: string;
   palette: ColorPalette;
@@ -83,21 +162,6 @@ export interface VisualIntentResult {
 // 1. Natural Language Intent & Entity Extraction
 // -------------------------------------------------------------
 
-/**
- * Extracts and cleans the exact brand name from natural human language prompts.
- * Solves:
- * - "Logo banao, naming YASIR FF" -> "YASIR FF"
- * - "Yasir FF ka logo banao" -> "YASIR FF"
- * - "YASIR FF ke naam ka logo bana do" -> "YASIR FF"
- * - "Logo banao naam YASIR FF" -> "YASIR FF"
- * - "Naming: YASIR FF" -> "YASIR FF"
- * - "Brand name YASIR FF hai" -> "YASIR FF"
- * - "Create a logo called YASIR FF" -> "YASIR FF"
- * - "Make a gaming logo for Yasir FF" -> "YASIR FF"
- * - "Yasir FF gaming logo chahiye" -> "YASIR FF"
- * - "Create a luxury logo for Zaid Motors" -> "Zaid Motors"
- * - "Make a logo for my YouTube channel Tech With Yasir" -> "Tech With Yasir"
- */
 export function extractAccurateBrandName(rawText: string, detectedCategory: string): { brandName: string; initials: string } {
   const trimmed = rawText.trim();
 
@@ -109,7 +173,6 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
   }
 
   // Pattern 2: Explicit "naming / name" indicators (English & Roman Urdu)
-  // Handles: "naming YASIR FF", "naming: YASIR FF", "naming is YASIR FF"
   const namingRegex = /\b(?:naming|named|name is|name:)\s*[:=\-]?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i;
   const namingMatch = trimmed.match(namingRegex);
   if (namingMatch && namingMatch[1].trim()) {
@@ -118,7 +181,6 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
   }
 
   // Pattern 3: Roman Urdu "naam" indicators
-  // Handles: "naam YASIR FF", "naam: YASIR FF", "ke naam ka", "naam se", "brand name YASIR FF hai"
   const naamRegex = /\b(?:naam|name)\s*[:=\-]?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i;
   const naamMatch = trimmed.match(naamRegex);
   if (naamMatch && naamMatch[1].trim()) {
@@ -140,7 +202,7 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
     if (candidate) return { brandName: candidate, initials: deriveInitials(candidate) };
   }
 
-  // Pattern 6: "called X" or "for X" (e.g. "Create a logo called YASIR FF", "Make a logo for my YouTube channel Tech With Yasir")
+  // Pattern 6: "called X" or "for X"
   const calledMatch = trimmed.match(/\b(?:called|entitled|branded as)\s+([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
   if (calledMatch && calledMatch[1].trim()) {
     const candidate = cleanExtractedCandidate(calledMatch[1].trim());
@@ -148,26 +210,33 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
   }
 
   // Pattern 7: "for my YouTube channel X" / "for channel X" / "for X"
-  const forMatch = trimmed.match(/\bfor\s+(?:my\s+)?(?:youtube\s+channel|channel|clan|team|startup|business|company|firm)?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
+  const forMatch = trimmed.match(/\bfor\s+(?:my\s+)?(?:youtube\s+channel|channel|clan|team|startup|business|company|firm|app|brand|restaurant|game)?\s*([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
   if (forMatch && forMatch[1].trim()) {
     const candidate = cleanExtractedCandidate(forMatch[1].trim());
     if (candidate) return { brandName: candidate, initials: deriveInitials(candidate) };
   }
 
+  // Pattern 7b: "about X" / "on X" / "topic X" (e.g. "about AI revolution" or "on futuristic city")
+  const aboutMatch = trimmed.match(/\b(?:about|titled|topic|on|concept)\s+([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})/i);
+  if (aboutMatch && aboutMatch[1].trim()) {
+    const candidate = cleanExtractedCandidate(aboutMatch[1].trim());
+    if (candidate) return { brandName: candidate, initials: deriveInitials(candidate) };
+  }
+
   // Pattern 8: Roman Urdu "<Name> ka logo banao" or "<Name> logo chahiye"
-  const kaLogoMatch = trimmed.match(/([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})\s+(?:ka|ki|ke)\s+logo\b/i);
+  const kaLogoMatch = trimmed.match(/([A-Za-z0-9][A-Za-z0-9\s&'-]{1,32})\s+(?:ka|ki|ke)\s+(?:logo|thumbnail|poster)\b/i);
   if (kaLogoMatch && kaLogoMatch[1].trim()) {
     const candidate = cleanExtractedCandidate(kaLogoMatch[1].trim());
     if (candidate) return { brandName: candidate, initials: deriveInitials(candidate) };
   }
 
   // Pattern 9: Fallback extraction by stripping command verbs & grammar
-  let stripped = trimmed
+  const stripped = trimmed
     .replace(/\b(create|make|generate|design|build|render|draw|produce)\b/gi, "")
     .replace(/\b(a|an|the|my|our|with|using|in|of|on|at|and|please|plz)\b/gi, "")
     .replace(/\b(banao|bana do|bana dein|chahiye|karo|kar do|hoga|hai|rakho|dikhayein|dein)\b/gi, "")
     .replace(/\b(ka|ki|ke|naam|naming|called|brand|company|logo|logos|لوگو|شعار|thumbnail|banner|poster|icon|badge|emblem)\b/gi, "")
-    .replace(/\b(professional|gaming|luxury|modern|minimalist|vector|esports|youtube|channel)\b/gi, "")
+    .replace(/\b(professional|gaming|luxury|modern|minimalist|minimal|vector|esports|youtube|channel|wordmark|mascot)\b/gi, "")
     .replace(/[,;:.!?\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -177,24 +246,24 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
     if (candidate) return { brandName: candidate, initials: deriveInitials(candidate) };
   }
 
-  // Category-specific high-grade fallback defaults
+  // Category & domain-specific smart defaults
+  const lowerTrimmed = trimmed.toLowerCase();
   let fallbackName = "PREMIERS AI";
-  if (detectedCategory === "gaming") fallbackName = "APEX ESPORTS";
+  if (lowerTrimmed.includes("perfume") || lowerTrimmed.includes("fragrance")) fallbackName = "ÉCLAT ROYALE";
+  else if (lowerTrimmed.includes("restaurant") || lowerTrimmed.includes("bistro") || lowerTrimmed.includes("cafe")) fallbackName = "L'OSTERIA BISTRO";
+  else if (lowerTrimmed.includes("hoodie") || (lowerTrimmed.includes("character") && lowerTrimmed.includes("black"))) fallbackName = "SHADOW CYPHER";
+  else if (lowerTrimmed.includes("futuristic city") || lowerTrimmed.includes("cyberpunk city") || lowerTrimmed.includes("city")) fallbackName = "NEO TOKYO 2099";
+  else if (lowerTrimmed.includes("ai revolution")) fallbackName = "AI REVOLUTION";
+  else if (lowerTrimmed.includes("website hero") || lowerTrimmed.includes("hero image") || lowerTrimmed.includes("hero graphic")) fallbackName = "NEXUS INTELLIGENCE";
+  else if (detectedCategory === "gaming") fallbackName = "APEX ESPORTS";
   else if (detectedCategory === "automotive") fallbackName = "ZAID MOTORS";
-  else if (detectedCategory === "luxury") fallbackName = "AURA ROYAL";
+  else if (detectedCategory === "luxury") fallbackName = "MAISON NOIR";
   else if (detectedCategory === "tech") fallbackName = "NEXUS TECH";
   else if (detectedCategory === "creator") fallbackName = "CREATOR STUDIO";
 
   return { brandName: fallbackName, initials: deriveInitials(fallbackName) };
 }
 
-/**
- * Derives professional initials / monogram letters from brand name.
- * e.g. "YASIR FF" -> "YF"
- * "Zaid Motors" -> "ZM"
- * "Tech With Yasir" -> "TWY"
- * "Premiers" -> "P"
- */
 export function deriveInitials(brandName: string): string {
   if (!brandName) return "P";
   const words = brandName.trim().split(/\s+/).filter(Boolean);
@@ -207,41 +276,30 @@ export function deriveInitials(brandName: string): string {
   return (words[0][0] + words[1][0] + (words[2] ? words[2][0] : "")).toUpperCase();
 }
 
-/**
- * Cleans extracted candidate string:
- * - Preserves "FF" uppercase
- * - Strips trailing filler words
- * - Capitalizes words naturally while keeping all-caps acronyms intact
- */
 function cleanExtractedCandidate(str: string): string | null {
   if (!str) return null;
 
-  // Clean trailing punctuation or Roman Urdu stop words
   let clean = str
     .replace(/[.,:;!?]+$/, "")
     .replace(/\b(hai|hoga|rakho|ka|ki|ke|plz|please|banao|chahiye|do)\b$/gi, "")
     .trim();
 
-  // If candidate is an invalid instruction word itself, reject
   const blacklisted = new Set([
     "naming", "name", "naam", "logo", "logos", "image", "banao", "chahiye",
-    "create", "make", "design", "professional", "gaming", "luxury", "brand"
+    "create", "make", "design", "professional", "gaming", "luxury", "brand",
+    "minimal", "modern", "wordmark", "thumbnail", "poster", "banner"
   ]);
   if (blacklisted.has(clean.toLowerCase())) return null;
 
-  // Preserve exact brand capitalization if uppercase like "YASIR FF"
   const tokens = clean.split(/\s+/);
   const formatted = tokens
     .map((t) => {
-      // If it's "FF", "AI", "GT", "YT", "PRO", keep uppercase
-      if (/^(ff|ai|gt|yt|pro|vip|pc|tv|vr|3d|4k|hq)$/i.test(t)) {
+      if (/^(ff|ai|gt|yt|pro|vip|pc|tv|vr|3d|4k|hq|app|ui)$/i.test(t)) {
         return t.toUpperCase();
       }
-      // If already uppercase (e.g. "YASIR"), keep it uppercase
       if (t === t.toUpperCase() && t.length > 1) {
         return t;
       }
-      // Normal title case
       return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
     })
     .join(" ");
@@ -250,53 +308,138 @@ function cleanExtractedCandidate(str: string): string | null {
 }
 
 // -------------------------------------------------------------
-// 2. Color Direction & Palette Intelligence
+// 2. Automatic Design Style & Typography Detection
 // -------------------------------------------------------------
 
-export function extractColorPalette(text: string, category: string): ColorPalette {
+export function detectDesignStyle(text: string, category: string): DesignStyleId {
   const lower = text.toLowerCase();
 
-  // User specifies "red and black" or "black and red"
+  if (lower.includes("minimal") || lower.includes("simple") || lower.includes("clean") || lower.includes("flat") || lower.includes("swiss")) {
+    return "minimal";
+  }
+  if (lower.includes("luxury") || lower.includes("premium") || lower.includes("royal") || lower.includes("gold") || lower.includes("heritage") || lower.includes("expensive")) {
+    return "luxury";
+  }
+  if (lower.includes("gaming") || lower.includes("esports") || lower.includes("free fire") || lower.includes("ff") || lower.includes("aggressive") || lower.includes("battle")) {
+    return "gaming";
+  }
+  if (lower.includes("vintage") || lower.includes("retro") || lower.includes("classic") || lower.includes("antique") || lower.includes("heritage") || lower.includes("badge")) {
+    return "vintage";
+  }
+  if (lower.includes("playful") || lower.includes("cartoon") || lower.includes("cute") || lower.includes("fun") || lower.includes("kid") || lower.includes("bubbly")) {
+    return "playful";
+  }
+  if (lower.includes("futuristic") || lower.includes("cyber") || lower.includes("sci-fi") || lower.includes("scifi") || lower.includes("ai") || lower.includes("hologram") || lower.includes("neon")) {
+    return "futuristic";
+  }
+  if (lower.includes("cinematic") || lower.includes("dramatic") || lower.includes("movie") || lower.includes("epic") || lower.includes("moody")) {
+    return "cinematic";
+  }
+  if (lower.includes("realistic") || lower.includes("photorealistic") || lower.includes("photo") || lower.includes("photography") || lower.includes("studio")) {
+    return "realistic";
+  }
+  if (lower.includes("corporate") || lower.includes("enterprise") || lower.includes("business") || lower.includes("company") || lower.includes("formal")) {
+    return "corporate";
+  }
+  if (lower.includes("colorful") || lower.includes("vibrant") || lower.includes("rainbow") || lower.includes("gradient")) {
+    return "colorful";
+  }
+  if (lower.includes("dark") || lower.includes("black") || lower.includes("monochrome") || lower.includes("noir") || lower.includes("shadow")) {
+    return "dark";
+  }
+  if (lower.includes("elegant") || lower.includes("graceful") || lower.includes("refined") || lower.includes("bespoke")) {
+    return "elegant";
+  }
+
+  // Category fallback
+  if (category === "gaming") return "gaming";
+  if (category === "luxury") return "luxury";
+  if (category === "tech") return "futuristic";
+  return "modern";
+}
+
+export function detectTypographyStyle(text: string, style: DesignStyleId): TypographyStyleId {
+  const lower = text.toLowerCase();
+
+  if (lower.includes("serif") && !lower.includes("sans-serif") && !lower.includes("sans serif")) {
+    return "serif";
+  }
+  if (lower.includes("geometric") || lower.includes("futura")) {
+    return "geometric_sans";
+  }
+  if (lower.includes("condensed") || lower.includes("tall")) {
+    return "condensed";
+  }
+  if (lower.includes("bold") || lower.includes("heavy") || lower.includes("impact")) {
+    return "bold_display";
+  }
+  if (lower.includes("handwritten") || lower.includes("script") || lower.includes("signature") || lower.includes("cursive")) {
+    return "script";
+  }
+  if (lower.includes("editorial") || lower.includes("vogue") || lower.includes("didot")) {
+    return "editorial";
+  }
+  if (lower.includes("mono") || lower.includes("technical") || lower.includes("code")) {
+    return "technical";
+  }
+
+  // Style fallbacks
+  if (style === "luxury" || style === "elegant") return "serif";
+  if (style === "gaming") return "gaming";
+  if (style === "futuristic") return "futuristic";
+  if (style === "minimal") return "geometric_sans";
+  if (style === "playful" || style === "cartoon") return "playful";
+  if (style === "corporate") return "modern_sans";
+
+  return "modern_sans";
+}
+
+// -------------------------------------------------------------
+// 3. Color Direction & Palette Intelligence
+// -------------------------------------------------------------
+
+export function extractColorPalette(text: string, category: string, style: DesignStyleId): ColorPalette {
+  const lower = text.toLowerCase();
+
+  // Explicit user color specifications
   if ((lower.includes("red") && lower.includes("black")) || lower.includes("crimson")) {
     return {
-      name: "Crimson & Carbon Black",
-      primary: "#ff2a44",
-      accent: "#ff5268",
-      bg1: "#0a0304",
-      bg2: "#19080b",
+      name: "Competitive Crimson & Titanium Obsidian",
+      primary: "#ef4444",
+      accent: "#ffaa00",
+      bg1: "#0b0506",
+      bg2: "#1c0a0c",
       text: "#ffffff",
       muted: "#fda4af",
     };
   }
 
-  // User specifies "gold" or "luxury"
-  if (lower.includes("gold") || lower.includes("golden") || category === "luxury") {
+  if (lower.includes("gold") || lower.includes("luxury") || style === "luxury") {
     return {
-      name: "Imperial Metallic Gold & Obsidian",
+      name: "Bespoke Venetian Gold & Pure Champagne",
       primary: "#e2b144",
       accent: "#f5d061",
-      bg1: "#0a0907",
-      bg2: "#1a1711",
+      bg1: "#08080a",
+      bg2: "#18181c",
       text: "#fafafa",
       muted: "#d4af37",
     };
   }
 
-  // User specifies "neon green" or "lime"
-  if (lower.includes("green") || lower.includes("lime") || lower.includes("toxic")) {
+  if (style === "minimal" && (lower.includes("white") || lower.includes("light"))) {
     return {
-      name: "Toxic Neon Lime & Stealth Black",
-      primary: "#10b981",
-      accent: "#34d399",
-      bg1: "#040d08",
-      bg2: "#0c1f14",
-      text: "#f0fdf4",
-      muted: "#6ee7b7",
+      name: "Architectural Pure White & Swiss Noir",
+      primary: "#09090b",
+      accent: "#2563eb",
+      bg1: "#ffffff",
+      bg2: "#f4f4f5",
+      text: "#09090b",
+      muted: "#71717a",
+      isLightMode: true,
     };
   }
 
-  // User specifies "blue and white" or "cyan"
-  if ((lower.includes("blue") && lower.includes("white")) || lower.includes("cyan")) {
+  if (lower.includes("cyan") || lower.includes("blue") || lower.includes("neon")) {
     return {
       name: "Electric Cyan & Glacier White",
       primary: "#00e5ff",
@@ -308,8 +451,7 @@ export function extractColorPalette(text: string, category: string): ColorPalett
     };
   }
 
-  // User specifies "purple" or "magenta"
-  if (lower.includes("purple") || lower.includes("violet") || lower.includes("magenta")) {
+  if (lower.includes("purple") || lower.includes("violet") || lower.includes("magenta") || style === "futuristic") {
     return {
       name: "Cyber Violet & Synthwave Pink",
       primary: "#a855f7",
@@ -321,7 +463,30 @@ export function extractColorPalette(text: string, category: string): ColorPalett
     };
   }
 
-  // Category-based intelligent defaults
+  if (style === "vintage") {
+    return {
+      name: "Heritage Rust & Aged Parchment",
+      primary: "#b45309",
+      accent: "#d97706",
+      bg1: "#140e0a",
+      bg2: "#261a12",
+      text: "#fef3c7",
+      muted: "#fde68a",
+    };
+  }
+
+  if (style === "playful") {
+    return {
+      name: "Pop Coral & Electric Sunburst",
+      primary: "#ff5964",
+      accent: "#fec601",
+      bg1: "#0e0d16",
+      bg2: "#1f1b32",
+      text: "#ffffff",
+      muted: "#f9a8d4",
+    };
+  }
+
   if (category === "gaming") {
     return {
       name: "Competitive Esports Fire & Ember",
@@ -331,30 +496,6 @@ export function extractColorPalette(text: string, category: string): ColorPalett
       bg2: "#220808",
       text: "#ffffff",
       muted: "#ffcc80",
-    };
-  }
-
-  if (category === "automotive") {
-    return {
-      name: "Titanium Silver & Velocity Crimson",
-      primary: "#ef4444",
-      accent: "#f87171",
-      bg1: "#0a0a0c",
-      bg2: "#17171c",
-      text: "#ffffff",
-      muted: "#94a3b8",
-    };
-  }
-
-  if (category === "creator") {
-    return {
-      name: "Creator Studio Crimson & Studio Slate",
-      primary: "#ff0033",
-      accent: "#ff3355",
-      bg1: "#0f0506",
-      bg2: "#210b0d",
-      text: "#ffffff",
-      muted: "#cbd5e1",
     };
   }
 
@@ -370,9 +511,8 @@ export function extractColorPalette(text: string, category: string): ColorPalett
     };
   }
 
-  // Default Universal Corporate
   return {
-    name: "Modern Precision Sapphire & Platinum",
+    name: "Modern Precision Sapphire & Pure Platinum",
     primary: "#00d4a0",
     accent: "#38bdf8",
     bg1: "#06090e",
@@ -383,7 +523,7 @@ export function extractColorPalette(text: string, category: string): ColorPalett
 }
 
 // -------------------------------------------------------------
-// 3. Category & Industry Detection
+// 4. Category & Industry Detection
 // -------------------------------------------------------------
 
 export function detectCategory(text: string): {
@@ -393,8 +533,6 @@ export function detectCategory(text: string): {
 } {
   const lower = text.toLowerCase();
 
-  // Gaming / Esports / Free Fire intelligence:
-  // "FF", "gaming", "esports", "free fire", "clan", "streamer", "battle royale"
   if (
     /\bff\b/i.test(lower) ||
     lower.includes("free fire") ||
@@ -415,7 +553,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Automotive / Motors
   if (
     lower.includes("motor") ||
     lower.includes("motors") ||
@@ -424,9 +561,7 @@ export function detectCategory(text: string): {
     lower.includes("supercar") ||
     lower.includes("garage") ||
     lower.includes("racing") ||
-    lower.includes("speed") ||
-    lower.includes("bmw") ||
-    lower.includes("mercedes")
+    lower.includes("speed")
   ) {
     return {
       category: "automotive",
@@ -435,13 +570,13 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Creator / YouTube Channel
   if (
     lower.includes("youtube") ||
     lower.includes("channel") ||
     lower.includes("vlog") ||
     lower.includes("podcast") ||
     lower.includes("creator") ||
+    lower.includes("thumbnail") ||
     lower.includes("yt")
   ) {
     return {
@@ -451,7 +586,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Luxury & Royal
   if (
     lower.includes("luxury") ||
     lower.includes("royal") ||
@@ -459,7 +593,8 @@ export function detectCategory(text: string): {
     lower.includes("gold") ||
     lower.includes("estate") ||
     lower.includes("haute") ||
-    lower.includes("prestige")
+    lower.includes("prestige") ||
+    lower.includes("perfume")
   ) {
     return {
       category: "luxury",
@@ -468,7 +603,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Technology & AI
   if (
     lower.includes("tech") ||
     lower.includes("software") ||
@@ -476,7 +610,9 @@ export function detectCategory(text: string): {
     lower.includes("robotics") ||
     lower.includes("cloud") ||
     lower.includes("code") ||
-    lower.includes("quantum")
+    lower.includes("quantum") ||
+    lower.includes("app") ||
+    lower.includes("saas")
   ) {
     return {
       category: "tech",
@@ -485,7 +621,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Healthcare & Medical
   if (
     lower.includes("medical") ||
     lower.includes("doctor") ||
@@ -501,7 +636,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Fitness & Gym
   if (
     lower.includes("fitness") ||
     lower.includes("gym") ||
@@ -516,7 +650,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Crypto & Web3
   if (
     lower.includes("crypto") ||
     lower.includes("bitcoin") ||
@@ -531,7 +664,6 @@ export function detectCategory(text: string): {
     };
   }
 
-  // Corporate & General Business
   return {
     category: "corporate",
     industry: "Enterprise & Modern Business",
@@ -540,139 +672,129 @@ export function detectCategory(text: string): {
 }
 
 // -------------------------------------------------------------
-// 4. Professional Concept Direction Synthesis
+// 5. Universal Concept Direction Generator (10 Comprehensive Concepts)
 // -------------------------------------------------------------
 
 export function generateConceptDirections(
   brandName: string,
   initials: string,
-  category: string
+  category: string,
+  style: DesignStyleId,
+  typography: TypographyStyleId
 ): LogoConcept[] {
-  if (category === "gaming") {
-    return [
-      {
-        id: "emblem",
-        title: "Concept A: Competitive Esports Crest",
-        badgeLabel: "Primary Emblem",
-        description: "Aggressive, battle-tested geometric crest with cyber-armor visor, dynamic horns, and 3D extruded metallic typography.",
-        symbolDescription: `Dynamic angular shield housing an original cyber-warrior silhouette with piercing glowing eyes, tailored specifically for "${brandName}".`,
-        typographyStyle: "900 Heavyweight custom esports display lettering with faceted chamfers",
-        composition: "Centralized warrior shield with curved banner base",
-      },
-      {
-        id: "monogram",
-        title: `Concept B: Interlocking Monogram (${initials})`,
-        badgeLabel: "Precision Lettermark",
-        description: `Precision-crafted interlocking vector monogram of "${initials}" with diamond facets and neon rim lighting.`,
-        symbolDescription: `Clean dual-letter geometric glyph fusing "${initials}" into an iconic, memorable profile avatar.`,
-        typographyStyle: "Futuristic geometric wide-tracking sans serif",
-        composition: "Dominant monogram emblem centered above brand typography",
-      },
-      {
-        id: "combination",
-        title: "Concept C: Minimalist Icon + Wordmark",
-        badgeLabel: "Combination Mark",
-        description: "Clean modern esports symbol paired with laser-sharp kerning typography, designed for team jerseys and tournament overlays.",
-        symbolDescription: "Stylized geometric flame/shard insignia representing velocity and competitive focus.",
-        typographyStyle: "High-contrast modern bold sans serif with 0.15em letter-spacing",
-        composition: "Balanced vector mark over ultra-clean horizontal typography",
-      },
-      {
-        id: "badge",
-        title: "Concept D: Tournament Hex Insignia",
-        badgeLabel: "Hexagonal Badge",
-        description: "Official guild tournament seal with neon perimeter dashes, verified star accents, and high-definition optical clarity.",
-        symbolDescription: "Heavyweight beveled hexagon with dual-tone metallic accents.",
-        typographyStyle: "Bold industrial display type with optical centering",
-        composition: "Enclosed hexagonal insignia with embedded badge typography",
-      },
-    ];
-  }
+  const isGaming = category === "gaming" || style === "gaming";
+  const isLuxury = category === "luxury" || style === "luxury";
 
-  if (category === "automotive") {
-    return [
-      {
-        id: "emblem",
-        title: "Concept A: Aerodynamic Winged Crest",
-        badgeLabel: "Precision Crest",
-        description: `Dynamic winged metallic emblem symbolizing velocity, mechanical excellence, and prestige for "${brandName}".`,
-        symbolDescription: "Twin aerodynamic swept wings flanking a precision central shield.",
-        typographyStyle: "Aggressive Italian automotive bold sans serif with forward slant",
-        composition: "Swept-wing crest above centered brand name",
-      },
-      {
-        id: "monogram",
-        title: `Concept B: Monogram Insignia (${initials})`,
-        badgeLabel: "Lettermark",
-        description: `Dual-letter interlocking chrome monogram (${initials}) inspired by luxury hypercar grilles.`,
-        symbolDescription: `Interlocking vector monogram "${initials}" with brushed metallic bevels.`,
-        typographyStyle: "Wide-tracked luxury automotive display typeface",
-        composition: "Central monogram badge with verified subtitle ribbon",
-      },
-      {
-        id: "combination",
-        title: "Concept C: Velocity Shield Mark",
-        badgeLabel: "Combination Mark",
-        description: "Sleek chevron shield badge with high-contrast crimson accents.",
-        symbolDescription: "Minimalist shield emblem with intersecting speed lines.",
-        typographyStyle: "Modern geometric sans with ultra-sharp apexes",
-        composition: "Stacked shield and bold wordmark",
-      },
-      {
-        id: "badge",
-        title: "Concept D: Luxury Radial Seal",
-        badgeLabel: "Heritage Seal",
-        description: "Prestige automotive badge engineered for steering wheel centers and vehicle grilles.",
-        symbolDescription: "Concentric circular rings with micro-metric gear teeth.",
-        typographyStyle: "Classical mechanical serif with modern kerning",
-        composition: "Circular emblem badge",
-      },
-    ];
-  }
-
-  // Corporate, Tech, Luxury, Creator default concepts
   return [
     {
-      id: "emblem",
-      title: "Concept A: Primary Architectural Mark",
-      badgeLabel: "Primary Mark",
-      description: `Geometric vector identity symbolizing intelligence, structural stability, and forward velocity for "${brandName}".`,
-      symbolDescription: "Interlocking geometric delta vectors with smooth optical transitions.",
-      typographyStyle: "Plus Jakarta Sans Bold with 0.08em optical tracking",
-      composition: "Top emblem centered over balanced wordmark",
+      id: "wordmark",
+      title: "Concept 1: Bespoke Typographic Wordmark",
+      badgeLabel: "Wordmark",
+      description: `Pure, award-winning typographic signature for "${brandName}" with customized letterform geometry, optical balance, and subtle ligatures.`,
+      symbolDescription: "Direct typographic mastery with precision kerning and custom character terminals.",
+      typographyStyle: isLuxury ? "Roman high-contrast serif with refined hairlines" : "Clean geometric sans with wide optical tracking",
+      composition: "Balanced horizontal signature with optional modern baseline accent",
+      recommendedCategory: "Modern tech, luxury fashion, corporate branding",
+    },
+    {
+      id: "minimal_symbol",
+      title: "Concept 2: Swiss Bauhaus Minimalist Mark",
+      badgeLabel: "Minimal Symbol",
+      description: "Ultra-reduced flat geometric vector mark passing all optical recognition tests from 16px to stadium billboards.",
+      symbolDescription: "Harmonic golden-ratio geometry (delta / interlocking loop / circle intersection).",
+      typographyStyle: "Ultra-clean grotesque sans serif with 0.1em tracking",
+      composition: "Isolated vector glyph with centered wordmark underneath",
+      recommendedCategory: "Modern startups, digital products, high-end design",
     },
     {
       id: "monogram",
-      title: `Concept B: Geometric Monogram (${initials})`,
+      title: `Concept 3: Interlocking Monogram (${initials})`,
       badgeLabel: "Monogram",
-      description: `Modern vector monogram formed by "${initials}" with clean negative space and high-contrast bevels.`,
-      symbolDescription: `Minimalist dual-character ligature "${initials}".`,
-      typographyStyle: "Clean geometric grotesque with balanced optical height",
-      composition: "Dominant monogram emblem centered with secondary label",
+      description: `Precision-crafted dual-character monogram ligature fusing "${initials}" into an iconic, memorable profile avatar.`,
+      symbolDescription: `Faceted vector monogram "${initials}" with diamond cuts and specular rim highlights.`,
+      typographyStyle: "Futuristic wide-tracking sans serif",
+      composition: "Dominant monogram glyph centered above brand typography",
+      recommendedCategory: "App avatars, fashion marques, personal branding",
+    },
+    {
+      id: "lettermark",
+      title: `Concept 4: Negative-Space Lettermark`,
+      badgeLabel: "Lettermark",
+      description: `Single or dual initial geometric mark utilizing negative space illusion for instant memorability.`,
+      symbolDescription: `Clever silhouette featuring the letter "${initials.charAt(0)}" with embedded optical arrows or nodes.`,
+      typographyStyle: "Semi-bold modern sans with proportional spacing",
+      composition: "Square lettermark lockup with clean brand nameplate",
+      recommendedCategory: "Fintech, software, enterprise identity",
     },
     {
       id: "combination",
-      title: "Concept C: Modern Combination Mark",
+      title: "Concept 5: Modern Combination Mark",
       badgeLabel: "Combination Mark",
-      description: "Iconic abstract symbol paired with crystal-clear brand typography.",
-      symbolDescription: "Prismatic vector node with harmonious ambient illumination.",
-      typographyStyle: "Ultra-clean modern sans serif with 0.12em tracking",
-      composition: "Horizontal or vertical lockup with high legibility",
+      description: "Harmonious balance of an iconic vector symbol paired with ultra-clean horizontal brand typography.",
+      symbolDescription: "Geometric kinetic prism representing intelligence, growth, and forward momentum.",
+      typographyStyle: "High-contrast bold modern sans serif",
+      composition: "Symbol to left or stacked above pristine brand wordmark",
+      recommendedCategory: "All-purpose flagship brand identities",
+    },
+    {
+      id: "emblem",
+      title: isGaming ? "Concept 6: Battle-Tested Tournament Crest" : "Concept 6: Heritage Architectural Emblem",
+      badgeLabel: "Emblem Crest",
+      description: isGaming
+        ? "Aggressive geometric battle shield with cyber-armor visor, dynamic horns, and 3D extruded metallic lettering."
+        : "Reinforced geometric crest symbolizing structural stability, trustworthiness, and prestige.",
+      symbolDescription: isGaming
+        ? `Warrior shield housing cyber-samurai mask with glowing cyan eyes tailored for "${brandName}".`
+        : "Symmetrical shield flanked by precision geometric facets.",
+      typographyStyle: isGaming ? "900 Heavyweight custom esports display lettering" : "Classical grotesque display typeface",
+      composition: "Enclosed crest with embedded or curving banner typography",
+      recommendedCategory: "Gaming clans, sports franchises, luxury marques",
     },
     {
       id: "badge",
-      title: "Concept D: Minimalist Seal Insignia",
-      badgeLabel: "Seal Insignia",
-      description: "Enclosed hexagonal badge passing all optical clarity and small-scale profile benchmarks.",
-      symbolDescription: "Precision hexagon with interior radial focal point.",
-      typographyStyle: "Semi-bold modern sans with centered badge layout",
-      composition: "Self-contained badge with border trim",
+      title: "Concept 7: Insignia Seal Badge",
+      badgeLabel: "Insignia Badge",
+      description: "Circular or hexagonal verified seal badge with perimeter micrometric dashes, stars, and established label.",
+      symbolDescription: "Concentric precision rings with internal focal glyph.",
+      typographyStyle: "Curved or centered industrial badge typeface",
+      composition: "Self-contained circular or hexagonal insignia badge",
+      recommendedCategory: "Heritage brands, coffee shops, clubs, certifications",
+    },
+    {
+      id: "mascot",
+      title: "Concept 8: Expressive Character Mascot",
+      badgeLabel: "Mascot Mark",
+      description: "Dynamic stylized mascot face (warrior / panther / wolf / falcon / android) with bold vector linework and intense eye lighting.",
+      symbolDescription: "High-impact mascot head with aggressive or friendly silhouette.",
+      typographyStyle: "Punchy heavyweight stencil or display sans",
+      composition: "Frontal mascot portrait with ribbon text below",
+      recommendedCategory: "Esports, gaming streamers, lifestyle brands, sports",
+    },
+    {
+      id: "abstract_mark",
+      title: "Concept 9: Kinetic Abstract Node",
+      badgeLabel: "Abstract Mark",
+      description: "Futuristic multi-dimensional vector node representing decentralized networks, neural intelligence, and fluid dynamics.",
+      symbolDescription: "Prismatic overlapping transparent vector ribbons with gradient glow.",
+      typographyStyle: "Futuristic modern sans serif with 0.15em letter-spacing",
+      composition: "Floating kinetic abstract node beside crisp wordmark",
+      recommendedCategory: "AI platforms, Web3 protocols, biotech, creative agencies",
+    },
+    {
+      id: "app_icon",
+      title: "Concept 10: Glassmorphic App Store Icon",
+      badgeLabel: "App Store Icon",
+      description: "Apple / Android continuous-radius squircle with frosted glass depth, 3D embossed glyph, and specular rim reflection.",
+      symbolDescription: "Beveled squircle with ambient inner shadow and floating central monogram.",
+      typographyStyle: "Native iOS / Android system sans typography",
+      composition: "Continuous squircle container ready for App Store & Google Play",
+      recommendedCategory: "Mobile apps, SaaS platforms, Chrome extensions",
     },
   ];
 }
 
 // -------------------------------------------------------------
-// 5. Mini Brand Brief Generator
+// 6. Mini Brand Brief Generator
 // -------------------------------------------------------------
 
 export function generateMiniBrandBrief(
@@ -680,74 +802,61 @@ export function generateMiniBrandBrief(
   initials: string,
   category: VisualIntentResult["category"],
   industry: string,
-  palette: ColorPalette
+  palette: ColorPalette,
+  style: DesignStyleId,
+  typography: TypographyStyleId
 ): MiniBrandBrief {
-  if (category === "gaming") {
-    return {
-      brandName,
-      initials,
-      industry,
-      category,
-      targetAudience: "Competitive gamers, Free Fire / esports communities, Twitch & YouTube gaming audiences.",
-      brandPersonality: "Aggressive, high-octane, fearless, competitive, modern, and elite.",
-      visualIdentity: "Heavyweight battle-royale gaming identity featuring custom sharp geometry, high-contrast rim lighting, and 3D extruded typography.",
-      symbolism: "Cyber-samurai crest & angular armor plates symbolize tactical mastery, victory, and unwavering focus.",
-      iconConcept: "Original sharp-horned warrior helmet within a reinforced tournament shield.",
-      typographyDirection: "Custom display esports lettering with faceted cuts, heavy stroke weight, and glowing specular highlights.",
-      colorDirection: `${palette.name} — high-contrast fire orange / crimson paired with electric cyan eye glow on deep battleground dark tones.`,
-      composition: "Symmetrical crest with central mascot icon, curved ribbon nameplate, and high-readability profile-avatar framing.",
-      scalability: "Engineered to maintain unmistakable silhouette recognition from 32px profile icons to 4K stream overlays.",
-      usageContext: "Discord server icons, YouTube gaming channel banners, team jerseys, streaming overlays, and tournament brackets.",
-      visualHierarchy: "1. Piercing Glowing Eyes & Mascot Silhouette → 2. Bold 3D Extruded Brand Name → 3. Tournament Shield Outline.",
-    };
-  }
-
-  if (category === "automotive") {
-    return {
-      brandName,
-      initials,
-      industry,
-      category,
-      targetAudience: "Automotive enthusiasts, luxury car buyers, performance racing fans.",
-      brandPersonality: "Prestigious, aerodynamic, powerful, precision-engineered, luxurious.",
-      visualIdentity: "High-end automotive marque featuring brushed titanium gradients, aerodynamic wing sweeps, and forward-slanted precision typography.",
-      symbolism: "Swept-wing geometry represents velocity, aerodynamic poise, and mechanical mastery.",
-      iconConcept: "Symmetrical aeronautic wings anchoring an interlocking precision monogram shield.",
-      typographyDirection: "Custom italicized automotive grotesque with razor-sharp terminal points.",
-      colorDirection: `${palette.name} — racing crimson and platinum silver against carbon-weave obsidian.`,
-      composition: "Top-centered marque crest with wide-tracked corporate nameplate below.",
-      scalability: "Optimized for vehicle badges, steering wheel hubs, showroom signage, and mobile headers.",
-      usageContext: "Showrooms, website headers, vehicle badges, marketing collateral, mobile apps.",
-      visualHierarchy: "1. Metallic Winged Crest → 2. Wide-Tracked Brand Identifier → 3. Subtitle Marque.",
-    };
-  }
+  const isGaming = category === "gaming" || style === "gaming";
+  const isLuxury = category === "luxury" || style === "luxury";
+  const isMinimal = style === "minimal";
 
   return {
     brandName,
     initials,
     industry,
     category,
-    targetAudience: "Enterprises, modern consumers, tech innovators, design professionals.",
-    brandPersonality: "Intelligent, reliable, forward-thinking, pristine, and sophisticated.",
-    visualIdentity: "Minimalist vector identity balancing geometric purity with harmonious negative space.",
-    symbolism: "Interlocking delta nodes represent dynamic collaboration, stability, and technological intelligence.",
-    iconConcept: `Clean vector emblem based on harmonic geometric ratios and initials "${initials}".`,
-    typographyDirection: "Clean Plus Jakarta Sans / geometric sans with wide optical kerning.",
-    colorDirection: `${palette.name} — balanced primary accent on deep slate background with high optical contrast.`,
-    composition: "Centered emblem with proportional spacing and mathematical balance.",
-    scalability: "Vector-ready SVG structure maintaining 100% clarity across all screen sizes.",
-    usageContext: "Web platforms, SaaS dashboards, mobile icons, corporate stationery, investor pitch decks.",
-    visualHierarchy: "1. Core Vector Mark → 2. Brand Name Wordmark → 3. Verified Category Subtitle.",
+    style,
+    typography,
+    targetAudience: isGaming
+      ? "Competitive gamers, esports communities, Twitch & YouTube gaming fans."
+      : isLuxury
+      ? "Discerning high-net-worth clients, luxury collectors, design connoisseurs."
+      : "Enterprises, modern consumers, tech innovators, and design-conscious audiences.",
+    brandPersonality: isGaming
+      ? "High-octane, fearless, competitive, tactical, and elite."
+      : isLuxury
+      ? "Prestigious, timeless, bespoke, refined, and exquisite."
+      : isMinimal
+      ? "Clean, uncluttered, focused, pure, and modern."
+      : "Intelligent, reliable, forward-thinking, pristine, and sophisticated.",
+    visualIdentity: isMinimal
+      ? "Swiss Bauhaus minimalism emphasizing negative space, mathematical purity, and zero extraneous decorative noise."
+      : isGaming
+      ? "Heavyweight battle-royale identity with sharp geometry, high-contrast rim lighting, and 3D extruded typography."
+      : isLuxury
+      ? "High-end serif and gold-leaf visual identity featuring hairline kerning and regal architectural balance."
+      : "Precision vector identity balancing geometric purity with harmonious typography and high-contrast accents.",
+    symbolism: isGaming
+      ? "Cyber-armor plates and glowing visor symbolize tactical mastery and unwavering focus."
+      : isLuxury
+      ? "Classical proportions and Roman letterforms symbolize enduring heritage and peerless craftsmanship."
+      : "Interlocking delta nodes represent dynamic collaboration, stability, and technological intelligence.",
+    iconConcept: isMinimal
+      ? `Ultra-clean flat vector glyph derived from harmonic geometric ratios and initials "${initials}".`
+      : `Harmonic vector emblem engineered specifically for "${brandName}".`,
+    typographyDirection: `${typography.replace(/_/g, " ").toUpperCase()} typography with optical kerning and mathematical line-height calibration.`,
+    colorDirection: `${palette.name} — calibrated for high visual impact and optical contrast across both OLED dark and pure light viewports.`,
+    composition: "Balanced lockup maintaining unmistakable visual hierarchy from 16px favicons to 4K displays.",
+    scalability: "Scalable vector architecture passing all optical recognition and small-scale profile benchmarks.",
+    usageContext: "Digital interfaces, mobile apps, social media avatars, video overlays, and physical merchandise.",
+    visualHierarchy: "1. Core Vector Mark / Glyph → 2. Primary Brand Wordmark → 3. Verified Subtitle Tagline.",
   };
 }
 
 // -------------------------------------------------------------
-// 6. Master Parse Visual Intent Engine
+// 7. Master Parse Visual Intent Engine
 // -------------------------------------------------------------
 
-/**
- * Main entry point: Evaluates natural language user request and returns complete Visual Intent Result.
- */
 export function parseVisualIntent(rawText: string): VisualIntentResult | null {
   if (!rawText || !rawText.trim()) return null;
   const lower = rawText.toLowerCase();
@@ -763,7 +872,11 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
     lower.includes("crest") ||
     lower.includes("insignia") ||
     lower.includes("badge") ||
-    /\b(banao|bana do|chahiye)\b/i.test(lower) && (lower.includes("naming") || lower.includes("naam") || lower.includes("brand"));
+    lower.includes("wordmark") ||
+    lower.includes("lettermark") ||
+    lower.includes("app icon") ||
+    lower.includes("favicon") ||
+    (/\b(banao|bana do|chahiye)\b/i.test(lower) && (lower.includes("naming") || lower.includes("naam") || lower.includes("brand")));
 
   const isThumbnailTrigger =
     lower.includes("thumbnail") ||
@@ -777,8 +890,24 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
 
   const isPosterTrigger =
     lower.includes("poster") ||
+    lower.includes("flyer") ||
+    lower.includes("billboard") ||
     lower.includes("پوسٹر") ||
     lower.includes("ملصق");
+
+  const isProductPhotoTrigger =
+    lower.includes("product photo") ||
+    lower.includes("product photography") ||
+    lower.includes("product showcase") ||
+    lower.includes("commercial photo") ||
+    lower.includes("e-commerce image") ||
+    lower.includes("ecommerce");
+
+  const isSocialTrigger =
+    lower.includes("social post") ||
+    lower.includes("instagram post") ||
+    lower.includes("story") ||
+    lower.includes("reel");
 
   const isGenericImageTrigger =
     lower.includes("wallpaper") ||
@@ -786,36 +915,117 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
     lower.includes("تصویر") ||
     lower.includes("artwork") ||
     lower.includes("drawing") ||
+    lower.includes("character") ||
+    lower.includes("landscape") ||
+    lower.includes("portrait") ||
+    lower.includes("photorealistic") ||
+    lower.includes("sci-fi") ||
+    lower.includes("fantasy") ||
+    lower.includes("illustration") ||
     /\b(draw|sketch|paint|illustrate|visualize|render)\b/i.test(lower) ||
-    /\b(create|generate|make|design)\s+(?:an?|the|some)?\s*(?:futuristic|cyberpunk|photorealistic|scenic|3d|modern)?\s*(?:image|picture|photo|wallpaper|artwork|render)/i.test(lower);
+    /\b(create|generate|make|design)\s+(?:an?|the|some)?\s*(?:futuristic|cyberpunk|photorealistic|scenic|3d|modern|minimal|luxury)?\s*(?:image|picture|photo|wallpaper|artwork|render|visual)/i.test(lower);
 
-  if (!isLogoTrigger && !isThumbnailTrigger && !isBannerTrigger && !isPosterTrigger && !isGenericImageTrigger) {
+  const isHeroTrigger =
+    lower.includes("hero") ||
+    lower.includes("website hero") ||
+    lower.includes("hero image") ||
+    lower.includes("hero graphic") ||
+    lower.includes("website background") ||
+    lower.includes("website banner");
+
+  const isAdTrigger =
+    lower.includes("advertisement") ||
+    lower.includes("ad creative") ||
+    lower.includes("perfume") ||
+    lower.includes("product ad") ||
+    lower.includes("commercial creative") ||
+    lower.includes("product advertisement");
+
+  const isCharacterTrigger =
+    lower.includes("character") ||
+    lower.includes("hoodie") ||
+    lower.includes("cartoon") ||
+    lower.includes("anime") ||
+    lower.includes("mascot");
+
+  const isSceneTrigger =
+    lower.includes("city") ||
+    lower.includes("futuristic city") ||
+    lower.includes("cyberpunk") ||
+    lower.includes("sci-fi") ||
+    lower.includes("landscape") ||
+    lower.includes("architecture");
+
+  if (
+    !isLogoTrigger &&
+    !isThumbnailTrigger &&
+    !isBannerTrigger &&
+    !isPosterTrigger &&
+    !isProductPhotoTrigger &&
+    !isSocialTrigger &&
+    !isGenericImageTrigger &&
+    !isHeroTrigger &&
+    !isAdTrigger &&
+    !isCharacterTrigger &&
+    !isSceneTrigger
+  ) {
     return null;
   }
 
   // 1. Determine Design Type
   let designType: VisualIntentResult["designType"] = "logo";
-  if (isThumbnailTrigger) designType = "thumbnail";
+  if (lower.includes("wordmark")) designType = "wordmark";
+  else if (lower.includes("lettermark")) designType = "lettermark";
+  else if (lower.includes("monogram")) designType = "monogram";
+  else if (lower.includes("emblem") || lower.includes("crest")) designType = "emblem";
+  else if (lower.includes("badge") || lower.includes("insignia")) designType = "badge";
+  else if (lower.includes("mascot")) designType = "mascot";
+  else if (lower.includes("app icon") || lower.includes("appstore")) designType = "app_icon";
+  else if (lower.includes("favicon")) designType = "favicon";
+  else if (isThumbnailTrigger) designType = "thumbnail";
+  else if (isHeroTrigger) designType = "banner";
   else if (isBannerTrigger) designType = "banner";
-  else if (isPosterTrigger) designType = "poster";
+  else if (isPosterTrigger || (lower.includes("restaurant") && (lower.includes("poster") || lower.includes("design")))) designType = "poster";
+  else if (isAdTrigger || isProductPhotoTrigger) designType = "product_photo";
+  else if (isSocialTrigger) designType = "social_post";
+  else if (isCharacterTrigger && !isLogoTrigger) designType = "character";
+  else if (lower.includes("landscape") || lower.includes("nature") || lower.includes("mountain")) designType = "landscape";
+  else if (lower.includes("architecture") || lower.includes("building") || lower.includes("villa")) designType = "architecture";
   else if (isGenericImageTrigger && !isLogoTrigger) designType = "image";
 
   // 2. Detect Category & Industry
   const { category, industry, theme } = detectCategory(rawText);
 
-  // 3. Extract Exact Brand Name & Initials
+  // 3. Detect Style & Typography
+  const style = detectDesignStyle(rawText, category);
+  const typography = detectTypographyStyle(rawText, style);
+
+  // 4. Extract Exact Brand Name & Initials
   const { brandName, initials } = extractAccurateBrandName(rawText, category);
 
-  // 4. Extract Palette
-  const palette = extractColorPalette(rawText, category);
+  // 5. Extract Palette
+  const palette = extractColorPalette(rawText, category, style);
 
-  // 5. Generate Concept Directions
-  const concepts = generateConceptDirections(brandName, initials, category);
+  // 6. Generate 10 Comprehensive Concept Directions
+  const concepts = generateConceptDirections(brandName, initials, category, style, typography);
 
-  // 6. Generate Mini Brand Brief
-  const brief = generateMiniBrandBrief(brandName, initials, category, industry, palette);
+  // 7. Select appropriate default concept
+  let selectedConceptId: LogoConceptId = "emblem";
+  if (designType === "wordmark") selectedConceptId = "wordmark";
+  else if (designType === "lettermark") selectedConceptId = "lettermark";
+  else if (designType === "monogram") selectedConceptId = "monogram";
+  else if (designType === "badge") selectedConceptId = "badge";
+  else if (designType === "mascot") selectedConceptId = "mascot";
+  else if (designType === "app_icon" || designType === "favicon") selectedConceptId = "app_icon";
+  else if (style === "minimal") selectedConceptId = "minimal_symbol";
+  else if (style === "luxury") selectedConceptId = "wordmark";
+  else if (style === "gaming") selectedConceptId = "emblem";
+  else selectedConceptId = "combination";
 
-  const promptDescription = `Professional ${designType.toUpperCase()} for "${brandName}" (${industry}) with customized typography, balanced geometry, and ${palette.name} palette.`;
+  // 8. Generate Mini Brand Brief
+  const brief = generateMiniBrandBrief(brandName, initials, category, industry, palette, style, typography);
+
+  const promptDescription = `Professional ${designType.toUpperCase()} for "${brandName}" (${industry}) with ${style.toUpperCase()} styling, ${typography.toUpperCase()} typography, and ${palette.name} palette.`;
 
   return {
     isVisualRequest: true,
@@ -824,7 +1034,9 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
     initials,
     industry,
     category,
-    style: concepts[0].title,
+    style,
+    typography,
+    selectedConceptId,
     purpose: category === "gaming" ? "Competitive Esports & Clan Identity" : "Official Brand & Enterprise Identity",
     theme,
     palette,
@@ -836,23 +1048,102 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
 }
 
 // -------------------------------------------------------------
-// 7. Vector SVG Generator for Real Vector Export
+// 8. Vector SVG Generator for Real Vector Export
 // -------------------------------------------------------------
 
-/**
- * Generates an ultra-crisp, scalable vector SVG string for the logo.
- * Users can download genuine SVG vector files or PNGs with transparent backgrounds.
- */
 export function generateLogoSvg(
   brandName: string,
   initials: string,
-  category: string,
+  conceptId: LogoConceptId,
   palette: ColorPalette,
-  transparentBg: boolean = false
+  transparentBg: boolean = false,
+  style: DesignStyleId = "modern"
 ): string {
   const bgRect = transparentBg
     ? ""
     : `<rect width="800" height="800" rx="32" fill="url(#bgGrad)" />`;
+
+  let symbolMarkup = "";
+
+  if (conceptId === "wordmark") {
+    symbolMarkup = `
+      <!-- Pure Typographic Wordmark -->
+      <g transform="translate(400, 390)" text-anchor="middle">
+        <text x="0" y="0" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="900" font-size="76" fill="url(#primaryGrad)" letter-spacing="4">${brandName}</text>
+        <line x1="-120" y1="28" x2="120" y2="28" stroke="${palette.accent}" stroke-width="4" stroke-linecap="round" />
+        <circle cx="0" cy="28" r="6" fill="${palette.primary}" />
+      </g>
+    `;
+  } else if (conceptId === "minimal_symbol") {
+    symbolMarkup = `
+      <!-- Minimalist Swiss Geometric Mark -->
+      <g transform="translate(400, 310)">
+        <circle cx="0" cy="0" r="90" fill="none" stroke="${palette.primary}" stroke-width="8" />
+        <polygon points="0,-60 52,30 -52,30" fill="url(#primaryGrad)" />
+        <circle cx="0" cy="5" r="16" fill="${palette.bg1 || "#0c0a12"}" />
+      </g>
+    `;
+  } else if (conceptId === "monogram") {
+    symbolMarkup = `
+      <!-- Interlocking Monogram Glyph -->
+      <g transform="translate(400, 310)">
+        <polygon points="0,-110 95,0 0,110 -95,0" fill="none" stroke="${palette.primary}" stroke-width="8" />
+        <text x="0" y="32" text-anchor="middle" font-family="'Plus Jakarta Sans', Impact, sans-serif" font-weight="900" font-size="108" fill="url(#primaryGrad)">${initials}</text>
+      </g>
+    `;
+  } else if (conceptId === "app_icon") {
+    symbolMarkup = `
+      <!-- Glassmorphic App Store Squircle -->
+      <g transform="translate(260, 170)">
+        <rect width="280" height="280" rx="64" fill="url(#primaryGrad)" filter="url(#glow)" />
+        <rect x="12" y="12" width="256" height="256" rx="52" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" />
+        <text x="140" y="175" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="110" fill="#ffffff">${initials}</text>
+      </g>
+    `;
+  } else if (conceptId === "badge") {
+    symbolMarkup = `
+      <!-- Tournament / Heritage Seal Badge -->
+      <g transform="translate(400, 310)">
+        <circle cx="0" cy="0" r="110" fill="none" stroke="${palette.primary}" stroke-width="6" stroke-dasharray="8 6" />
+        <circle cx="0" cy="0" r="96" fill="url(#primaryGrad)" opacity="0.15" />
+        <circle cx="0" cy="0" r="96" fill="none" stroke="${palette.accent}" stroke-width="3" />
+        <text x="0" y="24" text-anchor="middle" font-family="'Plus Jakarta Sans', Impact, sans-serif" font-weight="900" font-size="70" fill="url(#primaryGrad)">${initials}</text>
+      </g>
+    `;
+  } else if (conceptId === "mascot") {
+    symbolMarkup = `
+      <!-- Stylized Mascot Head Silhouette -->
+      <g transform="translate(400, 310)" filter="url(#glow)">
+        <path d="M 0 -120 L 60 -40 L 110 -20 L 80 50 L 0 120 L -80 50 L -110 -20 L -60 -40 Z" fill="${palette.bg1 || "#110708"}" stroke="${palette.primary}" stroke-width="8" />
+        <polygon points="-35,-10 -15,-15 -28,5" fill="#00ffff" />
+        <polygon points="35,-10 15,-15 28,5" fill="#00ffff" />
+        <path d="M 0 -60 L 25 10 L 0 45 L -25 10 Z" fill="${palette.primary}" />
+      </g>
+    `;
+  } else if (conceptId === "abstract_mark") {
+    symbolMarkup = `
+      <!-- Kinetic Abstract Polyhedron Node -->
+      <g transform="translate(400, 310)" filter="url(#glow)">
+        <polygon points="0,-100 86,-50 86,50 0,100 -86,50 -86,-50" fill="none" stroke="${palette.primary}" stroke-width="7" />
+        <line x1="0" y1="-100" x2="0" y2="100" stroke="${palette.accent}" stroke-width="3" />
+        <line x1="-86" y1="-50" x2="86" y2="50" stroke="${palette.accent}" stroke-width="3" />
+        <line x1="-86" y1="50" x2="86" y2="-50" stroke="${palette.accent}" stroke-width="3" />
+        <circle cx="0" cy="0" r="28" fill="url(#primaryGrad)" />
+      </g>
+    `;
+  } else {
+    // Default Emblem / Combination
+    symbolMarkup = `
+      <!-- Precision Architectural Crest -->
+      <g transform="translate(400, 310)" filter="url(#glow)">
+        <polygon points="0,-120 104,-60 104,60 0,120 -104,60 -104,-60" fill="none" stroke="${palette.primary}" stroke-width="8" />
+        <polygon points="0,-75 65,45 0,15 -65,45" fill="url(#primaryGrad)" />
+        <circle cx="0" cy="0" r="14" fill="#ffffff" />
+      </g>
+    `;
+  }
+
+  const typographyY = conceptId === "wordmark" ? 520 : 560;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
@@ -873,38 +1164,18 @@ export function generateLogoSvg(
 
   ${bgRect}
 
-  <!-- Emblem Silhouette -->
-  <g transform="translate(400, 320)" filter="url(#glow)">
-    ${
-      category === "gaming"
-        ? `<!-- Esports Shield Base -->
-           <path d="M 0 -130 L 140 -40 L 110 80 L 0 170 L -110 80 L -140 -40 Z" fill="#12080a" stroke="${palette.primary}" stroke-width="8" />
-           <!-- Mask Spikes -->
-           <path d="M 0 -100 L 50 -20 L 70 -50 L 50 10 L 80 40 L 40 55 L 0 90 L -40 55 L -80 40 L -50 10 L -70 -50 L -50 -20 Z" fill="${palette.primary}" opacity="0.9" />
-           <!-- Eyes -->
-           <polygon points="-35,0 -12,-2 -28,8" fill="#00ffff" />
-           <polygon points="35,0 12,-2 28,8" fill="#00ffff" />`
-        : `<!-- Geometric Hexagon Shield -->
-           <polygon points="0,-120 104,-60 104,60 0,120 -104,60 -104,-60" fill="none" stroke="${palette.primary}" stroke-width="8" />
-           <!-- Central Interlocking Delta -->
-           <polygon points="0,-75 65,45 0,15 -65,45" fill="url(#primaryGrad)" />
-           <!-- Initials Core -->
-           <circle cx="0" cy="0" r="12" fill="#ffffff" />`
-    }
-  </g>
+  ${symbolMarkup}
 
   <!-- Brand Typography -->
-  <g transform="translate(400, 560)" text-anchor="middle">
-    <!-- Drop Shadow -->
-    <text x="0" y="4" font-family="'Plus Jakarta Sans', Impact, sans-serif" font-weight="900" font-size="64" fill="#000000" letter-spacing="2">${brandName}</text>
-    <!-- Main Face -->
-    <text x="0" y="0" font-family="'Plus Jakarta Sans', Impact, sans-serif" font-weight="900" font-size="64" fill="url(#primaryGrad)" letter-spacing="2">${brandName}</text>
+  <g transform="translate(400, ${typographyY})" text-anchor="middle">
+    <text x="0" y="4" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="60" fill="#000000" opacity="0.6" letter-spacing="2">${brandName}</text>
+    <text x="0" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="60" fill="url(#primaryGrad)" letter-spacing="2">${brandName}</text>
   </g>
 
   <!-- Subtitle Tagline -->
-  <g transform="translate(400, 620)" text-anchor="middle">
-    <text x="0" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="16" fill="${palette.muted}" letter-spacing="5">
-      ${category === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : "PREMIUM BRAND IDENTITY"}
+  <g transform="translate(400, ${typographyY + 54})" text-anchor="middle">
+    <text x="0" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="15" fill="${palette.muted}" letter-spacing="5">
+      ${style === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : style === "luxury" ? "BESPOKE LUXURY IDENTITY" : "PREMIUM BRAND IDENTITY"}
     </text>
   </g>
 </svg>`;

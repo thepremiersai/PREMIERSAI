@@ -1159,14 +1159,15 @@ ${webSearchNeeded ? `REAL-TIME WEB SEARCH & CITATIONS MANDATE:
 - Use Google Search Grounding to provide real-time, up-to-date accurate information.
 - Cite specific publications, official organizations, or company announcements when applicable.
 - Never invent URLs or pretend to browse nonexistent pages.` : ""}
-${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot)\b/i.test(userText) ? `VISUAL INTENT & PROFESSIONAL LOGO DESIGN MANDATE:
-- The user is requesting a brand logo or visual identity.
-- ACCURATELY EXTRACT THE BRAND NAME: Never confuse instruction words like "naming", "naam", "logo", "called", "banao", "ke naam ka" as the brand itself!
-- For requests like "Logo banao, naming YASIR FF", the brand name is "YASIR FF". The word "naming" is a directive specifying the brand, and MUST NOT appear in the brand or design.
-- EXACT BRAND NAME PRESERVATION: If user gives "YASIR FF", preserve "YASIR FF" exactly. Do not invent extra words like "YASIR FREE FIRE" or "YASIR ESPORTS" unless explicitly requested.
-- GAMING & "FF" CONTEXT: Recognize "FF" in gaming context as Free Fire / esports gaming. Provide an original, high-octane competitive identity with clean geometry, aggressive silhouette, and profile-avatar clarity.
-- NOT JUST TEXT: Explore an actual visual identity (crest, emblem, monogram, or combination mark).
-- Provide a structured Mini Brand Brief detailing: Brand Identity, Symbolism, Typography, Color Palette, and Scalability.` : ""}`;
+${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot|wordmark|lettermark|thumbnail|poster|flyer|banner|billboard|photo|wallpaper|artwork)\b/i.test(userText) ? `UNIVERSAL CREATIVE & VISUAL INTELLIGENCE MANDATE:
+- The user is requesting creative visual design, brand architecture, thumbnail creation, or artwork.
+- ACCURATELY EXTRACT THE ENTITY / BRAND NAME: Never confuse directive words like "naming", "naam", "logo", "called", "banao", "ke naam ka" as the brand itself!
+- For requests like "Logo banao, naming YASIR FF", the brand name is strictly "YASIR FF". The word "naming" is a directive specifying the brand, and MUST NEVER appear in the brand or design.
+- EXACT PRESERVATION: Preserve exact names, acronyms, and casing given by the user. Do not invent extraneous words unless asked.
+- DESIGN DIVERSITY: Understand the user's intended aesthetic (minimalist, luxury, competitive gaming, vintage, corporate, playful, cinematic, photorealistic). Adapt typography, palette, and composition accordingly.
+- For YouTube Thumbnails: Focus on high-CTR storytelling, rule-of-thirds subject placement, punchy 2-line headline, and eyecatcher badges.
+- For Product Photography: Focus on studio rim lighting, travertine marble podium reflections, and material textures.
+- For Brand Logos: Provide structured Mini Brand Brief covering Symbolism, Typography Direction, Color Harmony, and Multi-scale Recognition.` : ""}`;
 
   // Build contents history
   const contents: any[] = [];
@@ -1385,6 +1386,14 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
       tailoredInstruction += `\n\nUSER OVERRIDE: The user explicitly requested replies in: ${targetLanguage}. You MUST reply strictly in this requested language.`;
     } else if (detection.detectedLanguage === "Roman Urdu") {
       tailoredInstruction += `\n\nUSER LANGUAGE CONTEXT: The user wrote in Roman Urdu (Urdu written in Latin script). You should understand them completely and respond in natural, friendly Roman Urdu or standard Urdu as appropriate.`;
+    }
+
+    if (/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot|wordmark|lettermark|thumbnail|poster|flyer|banner|billboard|photo|wallpaper|artwork)\b/i.test(userText)) {
+      tailoredInstruction += `\n\nUNIVERSAL CREATIVE & VISUAL INTELLIGENCE MANDATE:
+- The user is requesting creative visual design, brand architecture, thumbnail creation, or artwork.
+- ACCURATELY EXTRACT THE ENTITY / BRAND NAME: Never confuse directive words like "naming", "naam", "logo", "called", "banao", "ke naam ka" as the brand itself!
+- For requests like "Logo banao, naming YASIR FF", the brand name is strictly "YASIR FF".
+- DESIGN DIVERSITY: Adapt typography, color palettes, and composition to the exact requested style (minimal, luxury, gaming, modern, vintage, corporate, playful, photorealistic).`;
     }
 
     let replyText = "";

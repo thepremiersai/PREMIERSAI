@@ -7,7 +7,22 @@
 export interface GraphicOptions {
   title: string;
   subtitle?: string;
-  category?: "logo" | "image" | "thumbnail" | "poster" | "banner";
+  category?:
+    | "logo"
+    | "image"
+    | "thumbnail"
+    | "poster"
+    | "banner"
+    | "product_photo"
+    | "social_post"
+    | "social_story"
+    | "flyer"
+    | "billboard"
+    | "character"
+    | "infographic"
+    | "architecture"
+    | "landscape"
+    | "sci_fi";
   theme?:
     | "company_logo"
     | "tech"
@@ -32,7 +47,7 @@ export interface GraphicOptions {
     | "youtube"
     | "cyber_gaming"
     | "standard";
-  palette?: "emerald" | "cyber" | "sunset" | "luxury" | "ocean" | "fire" | "neon";
+  palette?: "emerald" | "cyber" | "sunset" | "luxury" | "ocean" | "fire" | "neon" | "vintage" | "playful";
   customPalette?: {
     name?: string;
     primary: string;
@@ -41,15 +56,75 @@ export interface GraphicOptions {
     bg2: string;
     text: string;
     muted: string;
+    isTransparent?: boolean;
+    isLightMode?: boolean;
   };
-  conceptId?: "emblem" | "monogram" | "combination" | "badge";
+  conceptId?:
+    | "emblem"
+    | "monogram"
+    | "wordmark"
+    | "lettermark"
+    | "combination"
+    | "badge"
+    | "mascot"
+    | "abstract_mark"
+    | "minimal_symbol"
+    | "app_icon";
+  style?:
+    | "professional"
+    | "luxury"
+    | "gaming"
+    | "modern"
+    | "minimal"
+    | "realistic"
+    | "cinematic"
+    | "cartoon"
+    | "futuristic"
+    | "premium"
+    | "vintage"
+    | "corporate"
+    | "colorful"
+    | "dark"
+    | "elegant"
+    | "playful"
+    | "dramatic";
+  typography?:
+    | "geometric_sans"
+    | "modern_sans"
+    | "humanist_sans"
+    | "serif"
+    | "display"
+    | "condensed"
+    | "bold_display"
+    | "handwritten"
+    | "script"
+    | "editorial"
+    | "futuristic"
+    | "technical"
+    | "luxury"
+    | "gaming"
+    | "playful";
+  badgeText?: string;
+  focalSubject?: string;
   initials?: string;
   transparentBg?: boolean;
   width?: number;
   height?: number;
 }
 
-const PALETTES = {
+export interface PaletteConfig {
+  bg1: string;
+  bg2: string;
+  primary: string;
+  accent: string;
+  text: string;
+  muted: string;
+  name?: string;
+  isLightMode?: boolean;
+  isTransparent?: boolean;
+}
+
+const PALETTES: Record<string, PaletteConfig> = {
   emerald: {
     bg1: "#06090c",
     bg2: "#0f171f",
@@ -108,6 +183,8 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
   const title = (options.title || "PREMIERS AI").toUpperCase();
   const transparentBg = !!options.transparentBg;
   const conceptId = options.conceptId || "emblem";
+  const style = options.style || "modern";
+  const typography = options.typography || "modern_sans";
   const initials = options.initials || deriveInitialLetters(title);
 
   let width = options.width || 1000;
@@ -116,12 +193,18 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
   if (category === "thumbnail") {
     width = 1280;
     height = 720;
-  } else if (category === "banner") {
+  } else if (category === "banner" || category === "billboard") {
     width = 1200;
     height = 450;
-  } else if (category === "poster") {
+  } else if (category === "poster" || category === "flyer") {
     width = 900;
     height = 1200;
+  } else if (category === "social_story") {
+    width = 720;
+    height = 1280;
+  } else if (category === "social_post" || category === "product_photo") {
+    width = 1080;
+    height = 1080;
   } else if (category === "image") {
     if (theme === "landscape" || theme === "cyber_city" || theme === "car" || theme === "architecture") {
       width = 1280;
@@ -141,20 +224,34 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
 
   // 1. Render Specific Theme or Category
   if (category === "logo") {
-    if (conceptId === "monogram") {
+    if (conceptId === "wordmark") {
+      drawWordmarkLogo(ctx, width, height, title, options.subtitle, palette, transparentBg, style, typography);
+    } else if (conceptId === "minimal_symbol") {
+      drawMinimalSymbolLogo(ctx, width, height, title, initials, palette, transparentBg, style);
+    } else if (conceptId === "monogram") {
       drawMonogramLogo(ctx, width, height, title, initials, palette, transparentBg);
+    } else if (conceptId === "lettermark") {
+      drawLettermarkLogo(ctx, width, height, title, initials, palette, transparentBg, style);
+    } else if (conceptId === "app_icon") {
+      drawAppIconLogo(ctx, width, height, title, initials, palette, transparentBg, style);
+    } else if (conceptId === "mascot") {
+      drawMascotLogo(ctx, width, height, title, options.subtitle, palette, transparentBg, style);
+    } else if (conceptId === "abstract_mark") {
+      drawAbstractMarkLogo(ctx, width, height, title, options.subtitle, palette, transparentBg, style);
     } else if (conceptId === "combination") {
       drawCombinationLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
     } else if (conceptId === "badge") {
       drawTournamentBadgeLogo(ctx, width, height, title, initials, palette, transparentBg);
     } else {
-      // Primary Concept Direction
-      if (theme === "car") {
-        drawAutomotiveLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
-      } else if (theme === "free_fire" || theme === "cyber_gaming") {
-        drawFreeFireLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
-      } else if (theme === "luxury") {
+      // Style / Theme-based primary concept direction
+      if (style === "minimal") {
+        drawMinimalSymbolLogo(ctx, width, height, title, initials, palette, transparentBg, style);
+      } else if (style === "luxury") {
         drawLuxuryLogo(ctx, width, height, title, options.subtitle);
+      } else if (style === "gaming" || theme === "free_fire" || theme === "cyber_gaming") {
+        drawFreeFireLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
+      } else if (theme === "car") {
+        drawAutomotiveLogo(ctx, width, height, title, options.subtitle, palette, transparentBg);
       } else if (theme === "company_logo" || theme === "tech") {
         drawCompanyLogo(ctx, width, height, title, options.subtitle, palette);
       } else if (theme === "crypto") {
@@ -169,8 +266,24 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
         drawModernBrandLogo(ctx, width, height, title, options.subtitle, palette);
       }
     }
+  } else if (category === "product_photo") {
+    drawProductPhotography(ctx, width, height, title, options.subtitle, palette);
+  } else if (category === "social_post") {
+    drawSocialMediaCreative(ctx, width, height, title, options.subtitle, palette, false);
+  } else if (category === "social_story") {
+    drawSocialMediaCreative(ctx, width, height, title, options.subtitle, palette, true);
+  } else if (category === "thumbnail") {
+    drawProThumbnail(ctx, width, height, title, options.subtitle, theme, palette, options.badgeText);
+  } else if (category === "poster" || category === "flyer") {
+    drawProPoster(ctx, width, height, title, options.subtitle, palette);
+  } else if (category === "banner" || category === "billboard") {
+    drawProBanner(ctx, width, height, title, options.subtitle, palette);
   } else if (
     category === "image" ||
+    category === "character" ||
+    category === "landscape" ||
+    category === "architecture" ||
+    category === "sci_fi" ||
     theme === "landscape" ||
     theme === "car" ||
     theme === "cyber_city" ||
@@ -188,19 +301,19 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
     theme === "portrait" ||
     theme === "universal"
   ) {
-    if (theme === "landscape") {
+    if (theme === "landscape" || category === "landscape") {
       drawLandscape(ctx, width, height, title, options.subtitle);
     } else if (theme === "car") {
       drawSupercar(ctx, width, height, title, options.subtitle);
-    } else if (theme === "cyber_city") {
+    } else if (theme === "cyber_city" || category === "sci_fi") {
       drawCyberCity(ctx, width, height, title, options.subtitle);
     } else if (theme === "space") {
       drawDeepSpace(ctx, width, height, title, options.subtitle);
     } else if (theme === "animal") {
       drawMajesticAnimal(ctx, width, height, title, options.subtitle);
-    } else if (theme === "anime") {
+    } else if (theme === "anime" || category === "character") {
       drawAnimeCharacter(ctx, width, height, title, options.subtitle);
-    } else if (theme === "architecture") {
+    } else if (theme === "architecture" || category === "architecture") {
       drawModernArchitecture(ctx, width, height, title, options.subtitle);
     } else if (theme === "food") {
       drawGourmetFood(ctx, width, height, title, options.subtitle);
@@ -221,12 +334,8 @@ export function generateCreativeGraphic(options: GraphicOptions): string {
     } else {
       drawUniversalProceduralArt(ctx, width, height, title, options.subtitle, theme, palette);
     }
-  } else if (category === "thumbnail") {
-    drawProThumbnail(ctx, width, height, title, options.subtitle, theme, palette);
-  } else if (category === "poster") {
-    drawProPoster(ctx, width, height, title, options.subtitle, palette);
   } else {
-    drawProBanner(ctx, width, height, title, options.subtitle, palette);
+    drawUniversalProceduralArt(ctx, width, height, title, options.subtitle, theme, palette);
   }
 
   return canvas.toDataURL("image/png");
@@ -238,6 +347,812 @@ function deriveInitialLetters(brand: string): string {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   if (words.length === 2) return (words[0][0] + words[1][0]).toUpperCase();
   return (words[0][0] + words[1][0] + (words[2] ? words[2][0] : "")).toUpperCase();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 1: BESPOKE TYPOGRAPHIC WORDMARK
+ * Pure typographic mastery with customized letterform geometry, optical balance,
+ * baseline accent, and zero generic clipart.
+ * =======================================================================
+ */
+function drawWordmarkLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string = "",
+  pal: PaletteConfig,
+  transparentBg: boolean = false,
+  style: string = "modern",
+  typography: string = "modern_sans"
+) {
+  const cx = w / 2;
+  const cy = h * 0.48;
+
+  if (!transparentBg) {
+    if (pal.isLightMode) {
+      const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+      bgGrad.addColorStop(0, "#ffffff");
+      bgGrad.addColorStop(0.7, "#f8fafc");
+      bgGrad.addColorStop(1, "#f1f5f9");
+      ctx.fillStyle = bgGrad;
+    } else {
+      const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+      bgGrad.addColorStop(0, pal.bg1 || "#0c0a12");
+      bgGrad.addColorStop(0.6, pal.bg2 || "#050408");
+      bgGrad.addColorStop(1, "#020204");
+      ctx.fillStyle = bgGrad;
+    }
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Subtle ambient radial glow behind wordmark
+  ctx.save();
+  const glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, w * 0.4);
+  glow.addColorStop(0, pal.isLightMode ? "rgba(0, 0, 0, 0.04)" : "rgba(255, 255, 255, 0.08)");
+  glow.addColorStop(1, "transparent");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // Dynamic Font Size & Family Calculation
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const isLuxury = style === "luxury" || typography === "serif";
+  const isGaming = style === "gaming" || typography === "gaming";
+  const isMinimal = style === "minimal" || typography === "geometric_sans";
+
+  let fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
+  let letterSpacing = 4;
+  let fontWeight = "900";
+
+  if (isLuxury) {
+    fontFamily = "'Cinzel', 'Playfair Display', Didot, 'Times New Roman', serif";
+    letterSpacing = 8;
+    fontWeight = "700";
+  } else if (isGaming) {
+    fontFamily = "Impact, 'Arial Black', sans-serif";
+    letterSpacing = 3;
+    fontWeight = "900";
+  } else if (isMinimal) {
+    fontFamily = "'Plus Jakarta Sans', Inter, -apple-system, sans-serif";
+    letterSpacing = 6;
+    fontWeight = "800";
+  }
+
+  const maxW = w * 0.78;
+  let fontSize = Math.floor(w * 0.11);
+  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+  while (ctx.measureText(title).width > maxW && fontSize > 28) {
+    fontSize -= 4;
+    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  }
+
+  // Drop shadow
+  if (!pal.isLightMode) {
+    ctx.fillStyle = "#000000";
+    ctx.fillText(title, cx, cy + 5);
+  }
+
+  // Main face gradient
+  const textGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
+  if (pal.isLightMode) {
+    textGrad.addColorStop(0, "#09090b");
+    textGrad.addColorStop(1, "#27272a");
+  } else if (isLuxury) {
+    textGrad.addColorStop(0, "#ffffff");
+    textGrad.addColorStop(0.35, pal.accent || "#f5d061");
+    textGrad.addColorStop(1, pal.primary || "#e2b144");
+  } else {
+    textGrad.addColorStop(0, "#ffffff");
+    textGrad.addColorStop(0.5, pal.accent);
+    textGrad.addColorStop(1, pal.primary);
+  }
+
+  ctx.fillStyle = textGrad;
+  if (!pal.isLightMode) {
+    ctx.shadowColor = pal.primary;
+    ctx.shadowBlur = isMinimal ? 8 : 20;
+  }
+  ctx.fillText(title, cx, cy);
+  ctx.restore();
+
+  // Baseline geometric accent
+  ctx.save();
+  const textW = ctx.measureText(title).width;
+  const accentY = cy + fontSize * 0.62;
+  const barW = Math.min(textW * 0.6, 220);
+
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx - barW / 2, accentY);
+  ctx.lineTo(cx + barW / 2, accentY);
+  ctx.stroke();
+
+  // Small center diamond / dot
+  ctx.fillStyle = pal.accent;
+  ctx.beginPath();
+  ctx.arc(cx, accentY, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Subtitle / Tagline below
+  const subText = subtitle || (isLuxury ? "BESPOKE HERITAGE & HAUTE COUTURE" : isGaming ? "COMPETITIVE ESPORTS DIVISION" : "INTELLIGENT BRAND ARCHITECTURE");
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${Math.floor(w * 0.019)}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = pal.isLightMode ? "#52525b" : pal.muted || "#94a3b8";
+  ctx.fillText(subText, cx, accentY + 40);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 2: SWISS BAUHAUS MINIMALIST MARK
+ * Ultra-reduced flat geometric vector mark passing all optical recognition tests.
+ * =======================================================================
+ */
+function drawMinimalSymbolLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  initials: string,
+  pal: PaletteConfig,
+  transparentBg: boolean = false,
+  _style: string = "minimal"
+) {
+  const cx = w / 2;
+  const cy = h * 0.38;
+
+  if (!transparentBg) {
+    if (pal.isLightMode) {
+      ctx.fillStyle = "#ffffff";
+    } else {
+      ctx.fillStyle = pal.bg1 || "#090a0f";
+    }
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const R = Math.min(w, h) * 0.17;
+
+  // Ultra-Clean Swiss Geometric Silhouette
+  ctx.save();
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Outer circle ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Geometric Triangle / Delta Core
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R * 0.58);
+  ctx.lineTo(cx + R * 0.54, cy + R * 0.36);
+  ctx.lineTo(cx - R * 0.54, cy + R * 0.36);
+  ctx.closePath();
+  ctx.fill();
+
+  // Negative space cutout circle in delta
+  ctx.fillStyle = pal.isLightMode ? "#ffffff" : pal.bg1 || "#090a0f";
+  ctx.beginPath();
+  ctx.arc(cx, cy + R * 0.06, R * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Clean Typography Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 68);
+  ctx.font = `800 ${fontSize}px 'Plus Jakarta Sans', Inter, sans-serif`;
+  ctx.fillStyle = pal.isLightMode ? "#09090b" : "#ffffff";
+  ctx.fillText(title, cx, h * 0.70);
+
+  // Minimal Category Subhead
+  ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.isLightMode ? "#71717a" : pal.muted || "#94a3b8";
+  ctx.fillText("MINIMALIST IDENTITY SYSTEM", cx, h * 0.78);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 4: NEGATIVE-SPACE LETTERMARK
+ * Single or dual initial geometric mark utilizing negative space cuts.
+ * =======================================================================
+ */
+function drawLettermarkLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  initials: string,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false,
+  _style: string = "modern"
+) {
+  const cx = w / 2;
+  const cy = h * 0.40;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, pal.bg1 || "#0a0c12");
+    bgGrad.addColorStop(1, "#030406");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const boxSize = Math.min(w, h) * 0.34;
+
+  ctx.save();
+  // Dual-tone faceted square
+  const boxGrad = ctx.createLinearGradient(cx - boxSize / 2, cy - boxSize / 2, cx + boxSize / 2, cy + boxSize / 2);
+  boxGrad.addColorStop(0, pal.primary);
+  boxGrad.addColorStop(1, pal.accent);
+
+  ctx.fillStyle = boxGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 25;
+  ctx.beginPath();
+  ctx.roundRect(cx - boxSize / 2, cy - boxSize / 2, boxSize, boxSize, 28);
+  ctx.fill();
+
+  // Negative space Letterform
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = pal.bg1 || "#0a0c12";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${Math.floor(boxSize * 0.65)}px 'Plus Jakarta Sans', Impact, sans-serif`;
+  ctx.fillText(initials.slice(0, 2), cx, cy + 4);
+  ctx.restore();
+
+  // Typography Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 68);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 15;
+  ctx.fillText(title, cx, h * 0.72);
+
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.fillText("LETTERMARK IDENTITY • SCALABLE VECTOR", cx, h * 0.80);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 10: GLASSMORPHIC APP STORE ICON
+ * Continuous-radius squircle with frosted glass depth and specular lighting.
+ * =======================================================================
+ */
+function drawAppIconLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  initials: string,
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false,
+  _style: string = "modern"
+) {
+  const cx = w / 2;
+  const cy = h * 0.40;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, "#0c0e17");
+    bgGrad.addColorStop(1, "#030408");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const iconSize = Math.min(w, h) * 0.38;
+  const r = iconSize * 0.22; // Apple continuous curvature
+
+  ctx.save();
+  // App Squircle Body
+  const iconGrad = ctx.createLinearGradient(cx - iconSize / 2, cy - iconSize / 2, cx + iconSize / 2, cy + iconSize / 2);
+  iconGrad.addColorStop(0, pal.accent);
+  iconGrad.addColorStop(0.5, pal.primary);
+  iconGrad.addColorStop(1, "#081018");
+
+  ctx.fillStyle = iconGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 35;
+  ctx.beginPath();
+  ctx.roundRect(cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize, r);
+  ctx.fill();
+
+  // Glass Specular Rim Border
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(cx - iconSize / 2 + 1.5, cy - iconSize / 2 + 1.5, iconSize - 3, iconSize - 3, r - 1.5);
+  ctx.stroke();
+
+  // Top Sheen
+  const sheenGrad = ctx.createLinearGradient(0, cy - iconSize / 2, 0, cy);
+  sheenGrad.addColorStop(0, "rgba(255, 255, 255, 0.35)");
+  sheenGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = sheenGrad;
+  ctx.beginPath();
+  ctx.roundRect(cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize * 0.45, [r, r, 0, 0]);
+  ctx.fill();
+
+  // 3D Embossed Initial Core
+  ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${Math.floor(iconSize * 0.48)}px 'Plus Jakarta Sans', -apple-system, sans-serif`;
+  ctx.fillText(initials.slice(0, 2), cx, cy);
+  ctx.restore();
+
+  // Title Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 68);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(title, cx, h * 0.72);
+
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.fillText("APP STORE & GOOGLE PLAY ICON • SQUIRCLE", cx, h * 0.80);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 8: EXPRESSIVE CHARACTER / ANIMAL MASCOT
+ * High-impact mascot face with bold vector linework and intense eye lighting.
+ * =======================================================================
+ */
+function drawMascotLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string = "",
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false,
+  _style: string = "gaming"
+) {
+  const cx = w / 2;
+  const cy = h * 0.38;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, w * 0.75);
+    bgGrad.addColorStop(0, "#140a10");
+    bgGrad.addColorStop(0.6, "#090408");
+    bgGrad.addColorStop(1, "#020104");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const R = Math.min(w, h) * 0.19;
+
+  // Mascot Outer Shield / Crest
+  ctx.save();
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 7;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 30;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R * 1.15);
+  ctx.lineTo(cx + R * 1.05, cy - R * 0.35);
+  ctx.lineTo(cx + R * 0.85, cy + R * 0.8);
+  ctx.lineTo(cx, cy + R * 1.2);
+  ctx.lineTo(cx - R * 0.85, cy + R * 0.8);
+  ctx.lineTo(cx - R * 1.05, cy - R * 0.35);
+  ctx.closePath();
+
+  ctx.fillStyle = "#160910";
+  ctx.fill();
+  ctx.stroke();
+
+  // Angular Panther / Cyber Warrior Brow & Eyes
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  // Ears
+  ctx.moveTo(cx - R * 0.7, cy - R * 0.8);
+  ctx.lineTo(cx - R * 0.4, cy - R * 0.3);
+  ctx.lineTo(cx - R * 0.8, cy - R * 0.2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(cx + R * 0.7, cy - R * 0.8);
+  ctx.lineTo(cx + R * 0.4, cy - R * 0.3);
+  ctx.lineTo(cx + R * 0.8, cy - R * 0.2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fierce Glowing Cyan Eyes
+  ctx.fillStyle = "#00ffff";
+  ctx.shadowColor = "#00ffff";
+  ctx.shadowBlur = 20;
+
+  ctx.beginPath();
+  ctx.moveTo(cx - R * 0.45, cy - R * 0.05);
+  ctx.lineTo(cx - R * 0.15, cy - R * 0.1);
+  ctx.lineTo(cx - R * 0.35, cy + R * 0.08);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(cx + R * 0.45, cy - R * 0.05);
+  ctx.lineTo(cx + R * 0.15, cy - R * 0.1);
+  ctx.lineTo(cx + R * 0.35, cy + R * 0.08);
+  ctx.closePath();
+  ctx.fill();
+
+  // Nose / Muzzle
+  ctx.fillStyle = pal.accent;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + R * 0.15);
+  ctx.lineTo(cx + R * 0.2, cy + R * 0.45);
+  ctx.lineTo(cx - R * 0.2, cy + R * 0.45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // 3D Extruded Banner Typography Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.085), 78);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', Impact, sans-serif`;
+
+  for (let s = 6; s > 0; s--) {
+    ctx.fillStyle = "#000000";
+    ctx.fillText(title, cx, h * 0.72 + s);
+  }
+
+  const textGrad = ctx.createLinearGradient(0, h * 0.68, 0, h * 0.76);
+  textGrad.addColorStop(0, "#ffffff");
+  textGrad.addColorStop(0.5, pal.accent);
+  textGrad.addColorStop(1, pal.primary);
+  ctx.fillStyle = textGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 20;
+  ctx.fillText(title, cx, h * 0.72);
+
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = "#ffd27d";
+  ctx.shadowBlur = 0;
+  ctx.fillText(subtitle || "OFFICIAL MASCOT CREST • ESPORTS FRANCHISE", cx, h * 0.81);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * CONCEPT 9: KINETIC ABSTRACT NODE
+ * Multi-dimensional vector node representing neural intelligence and fluid energy.
+ * =======================================================================
+ */
+function drawAbstractMarkLogo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string = "",
+  pal: typeof PALETTES.emerald,
+  transparentBg: boolean = false,
+  _style: string = "modern"
+) {
+  const cx = w / 2;
+  const cy = h * 0.38;
+
+  if (!transparentBg) {
+    const bgGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, w * 0.7);
+    bgGrad.addColorStop(0, pal.bg1 || "#070c14");
+    bgGrad.addColorStop(1, "#020408");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const R = Math.min(w, h) * 0.18;
+
+  // Kinetic Overlapping Nodes
+  ctx.save();
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 6;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 25;
+
+  // Outer Hexagon
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const ang = (i * Math.PI) / 3;
+    const hx = cx + Math.cos(ang) * R;
+    const hy = cy + Math.sin(ang) * R;
+    if (i === 0) ctx.moveTo(hx, hy);
+    else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Internal Connecting Kinetic Lines
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < 6; i++) {
+    const ang = (i * Math.PI) / 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R);
+    ctx.stroke();
+  }
+
+  // Floating Quantum Spheres
+  for (let i = 0; i < 6; i++) {
+    const ang = (i * Math.PI) / 3;
+    const hx = cx + Math.cos(ang) * R;
+    const hy = cy + Math.sin(ang) * R;
+    ctx.fillStyle = i % 2 === 0 ? "#ffffff" : pal.primary;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Center Core
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "#ffffff";
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Typography Below
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.075), 68);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 15;
+  ctx.fillText(title, cx, h * 0.72);
+
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.fillText(subtitle || "KINETIC ABSTRACT VECTOR ARCHITECTURE", cx, h * 0.80);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * PRODUCT PHOTOGRAPHY / E-COMMERCE ADVERTISING
+ * Circular travertine podium with softbox rim light, dramatic reflections, and product silhouette.
+ * =======================================================================
+ */
+function drawProductPhotography(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string = "",
+  pal: typeof PALETTES.emerald
+) {
+  const cx = w / 2;
+  const cy = h * 0.52;
+
+  // 1. Studio Lighting Background (Warm Softbox Drop)
+  const bgGrad = ctx.createRadialGradient(cx, cy - 80, 50, cx, cy, w * 0.7);
+  bgGrad.addColorStop(0, "#1f242d");
+  bgGrad.addColorStop(0.5, "#0f131a");
+  bgGrad.addColorStop(1, "#07090d");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
+
+  // 2. Travertine Circular Marble Podium
+  const podiumW = w * 0.52;
+  const podiumH = 48;
+  const podiumY = cy + 120;
+
+  ctx.save();
+  // Podium drop shadow on floor
+  const floorShadow = ctx.createRadialGradient(cx, podiumY + podiumH + 20, 10, cx, podiumY + podiumH + 20, podiumW * 0.7);
+  floorShadow.addColorStop(0, "rgba(0, 0, 0, 0.75)");
+  floorShadow.addColorStop(1, "transparent");
+  ctx.fillStyle = floorShadow;
+  ctx.fillRect(cx - podiumW * 0.8, podiumY + podiumH, podiumW * 1.6, 60);
+
+  // Cylindrical Podium Front
+  ctx.fillStyle = "#2a313d";
+  ctx.fillRect(cx - podiumW / 2, podiumY, podiumW, podiumH);
+
+  // Cylindrical Podium Top Ellipse
+  ctx.fillStyle = "#3d4656";
+  ctx.beginPath();
+  ctx.ellipse(cx, podiumY, podiumW / 2, 28, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Top rim light
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // 3. Central Luxury Product Silhouette (Perfume Flask / Smart Tech Bottle)
+  const flaskW = 120;
+  const flaskH = 190;
+  const flaskY = podiumY - flaskH;
+
+  ctx.save();
+  // Glass bottle body
+  const bottleGrad = ctx.createLinearGradient(cx - flaskW / 2, flaskY, cx + flaskW / 2, flaskY + flaskH);
+  bottleGrad.addColorStop(0, "rgba(255, 255, 255, 0.25)");
+  bottleGrad.addColorStop(0.3, pal.primary);
+  bottleGrad.addColorStop(0.7, pal.accent);
+  bottleGrad.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+
+  ctx.fillStyle = bottleGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 35;
+  ctx.beginPath();
+  ctx.roundRect(cx - flaskW / 2, flaskY, flaskW, flaskH, 16);
+  ctx.fill();
+
+  // Specular Reflection Streak down glass
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx - flaskW / 2 + 18, flaskY + 15);
+  ctx.lineTo(cx - flaskW / 2 + 18, flaskY + flaskH - 20);
+  ctx.stroke();
+
+  // Gold / Chrome Cap
+  ctx.fillStyle = "#ffd700";
+  ctx.beginPath();
+  ctx.roundRect(cx - 36, flaskY - 45, 72, 45, 6);
+  ctx.fill();
+
+  // Product Label on Bottle
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText(title.slice(0, 16), cx, flaskY + flaskH / 2);
+  ctx.restore();
+
+  // 4. Advertising Headline & Subtitle
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fontSize = Math.min(Math.floor(w * 0.055), 52);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(title, cx, h * 0.16);
+
+  ctx.font = "bold 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.primary;
+  ctx.fillText(subtitle || "COMMERCIAL PRODUCT SHOWCASE • 8K STUDIO LIGHTING", cx, h * 0.22);
+  ctx.restore();
+}
+
+/**
+ * =======================================================================
+ * SOCIAL MEDIA CREATIVE (1:1 POST / 9:16 STORY)
+ * =======================================================================
+ */
+function drawSocialMediaCreative(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  title: string,
+  subtitle: string = "",
+  pal: typeof PALETTES.emerald,
+  isStory: boolean = false
+) {
+  const cx = w / 2;
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  bgGrad.addColorStop(0, pal.bg1 || "#0b0f19");
+  bgGrad.addColorStop(0.5, pal.bg2 || "#161f33");
+  bgGrad.addColorStop(1, "#06090e");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Border Frame
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(32, 32, w - 64, h - 64);
+
+  // Header Badge
+  ctx.save();
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  ctx.roundRect(cx - 90, isStory ? 90 : 70, 180, 36, 18);
+  ctx.fill();
+
+  ctx.fillStyle = "#000000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 13px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("PREMIERS EXCLUSIVE", cx, isStory ? 108 : 88);
+  ctx.restore();
+
+  // Central Visual Hero Card
+  const cardW = w * 0.78;
+  const cardH = isStory ? h * 0.42 : h * 0.48;
+  const cardY = isStory ? h * 0.22 : h * 0.22;
+
+  ctx.save();
+  const cardGrad = ctx.createLinearGradient(cx - cardW / 2, cardY, cx + cardW / 2, cardY + cardH);
+  cardGrad.addColorStop(0, "rgba(255, 255, 255, 0.08)");
+  cardGrad.addColorStop(1, "rgba(0, 0, 0, 0.45)");
+  ctx.fillStyle = cardGrad;
+  ctx.strokeStyle = pal.primary;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 25;
+  ctx.beginPath();
+  ctx.roundRect(cx - cardW / 2, cardY, cardW, cardH, 24);
+  ctx.fill();
+  ctx.stroke();
+
+  // Internal glowing logo/graphic
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(cx, cardY + cardH * 0.42, 48, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = pal.primary;
+  ctx.beginPath();
+  ctx.arc(cx, cardY + cardH * 0.42, 36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Title & Headline
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const titleY = cardY + cardH + (isStory ? 60 : 50);
+  const fontSize = Math.min(Math.floor(w * 0.075), 64);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(title, cx, titleY);
+
+  // Subtitle
+  ctx.font = "bold 16px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = pal.muted || "#94a3b8";
+  ctx.fillText(subtitle || "DISCOVER THE FUTURE OF INTELLIGENCE", cx, titleY + 44);
+
+  // Call to action button at bottom
+  const btnY = isStory ? h - 130 : h - 90;
+  ctx.fillStyle = pal.primary;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.roundRect(cx - 110, btnY, 220, 48, 24);
+  ctx.fill();
+
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 15px 'Plus Jakarta Sans', sans-serif";
+  ctx.shadowBlur = 0;
+  ctx.fillText(isStory ? "SWIPE UP" : "LEARN MORE", cx, btnY + 24);
+  ctx.restore();
 }
 
 /**
@@ -1320,73 +2235,151 @@ function drawProThumbnail(
   title: string,
   subtitle: string | undefined,
   theme: string,
-  pal: typeof PALETTES.emerald
+  pal: typeof PALETTES.emerald,
+  badgeText?: string
 ) {
-  // Background
+  // 1. High-Impact Background with Vignette & Energy Streaks
   const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-  bgGrad.addColorStop(0, theme === "free_fire" ? "#1e0404" : pal.bg1);
-  bgGrad.addColorStop(1, theme === "free_fire" ? "#0a0101" : pal.bg2);
+  bgGrad.addColorStop(0, theme === "free_fire" ? "#1e0404" : "#080c14");
+  bgGrad.addColorStop(0.5, theme === "free_fire" ? "#330808" : "#131b2e");
+  bgGrad.addColorStop(1, "#020406");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Category Badge
-  const badgeW = 200;
-  const badgeH = 42;
-  ctx.fillStyle = theme === "free_fire" ? "#ff4d00" : pal.primary;
+  // Diagonal Energy Light Streaks
+  ctx.save();
+  ctx.strokeStyle = theme === "free_fire" ? "rgba(255, 68, 0, 0.15)" : "rgba(0, 212, 160, 0.15)";
+  ctx.lineWidth = 14;
   ctx.beginPath();
-  ctx.roundRect(60, 60, badgeW, badgeH, 10);
+  ctx.moveTo(w * 0.2, 0);
+  ctx.lineTo(w * 0.6, h);
+  ctx.moveTo(w * 0.35, 0);
+  ctx.lineTo(w * 0.75, h);
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. High-CTR Eyecatcher Badge (Top-Left)
+  const effectiveBadge = badgeText || (theme === "free_fire" ? "PRO GAMING" : title.toLowerCase().includes("top") ? "TOP 10" : "NEW RELEASE");
+  const badgeW = Math.min(effectiveBadge.length * 15 + 40, 260);
+  const badgeH = 46;
+
+  ctx.save();
+  ctx.fillStyle = theme === "free_fire" ? "#ff4d00" : "#ffd700";
+  ctx.shadowColor = theme === "free_fire" ? "#ff4d00" : "#ffd700";
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.roundRect(50, 45, badgeW, badgeH, 12);
   ctx.fill();
 
   ctx.fillStyle = "#000000";
-  ctx.font = "bold 18px 'Plus Jakarta Sans', sans-serif";
+  ctx.font = "900 18px 'Plus Jakarta Sans', Impact, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(theme === "free_fire" ? "PRO GAMING" : "PREMIERS AI", 60 + badgeW / 2, 87);
+  ctx.textBaseline = "middle";
+  ctx.shadowBlur = 0;
+  ctx.fillText(effectiveBadge.toUpperCase(), 50 + badgeW / 2, 45 + badgeH / 2);
+  ctx.restore();
 
-  // Big Bold Headline
-  ctx.textAlign = "left";
+  // 3. Right-Side Focal Subject (with colored rim glow aura)
+  const ox = w * 0.76;
+  const oy = h * 0.50;
+  const or = 175;
+
+  ctx.save();
+  // Radial glow aura
+  const auraGrad = ctx.createRadialGradient(ox, oy, 20, ox, oy, or * 1.4);
+  auraGrad.addColorStop(0, theme === "free_fire" ? "rgba(255, 85, 0, 0.5)" : "rgba(0, 212, 160, 0.45)");
+  auraGrad.addColorStop(0.7, theme === "free_fire" ? "rgba(255, 0, 0, 0.2)" : "rgba(56, 189, 248, 0.15)");
+  auraGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = auraGrad;
+  ctx.beginPath();
+  ctx.arc(ox, oy, or * 1.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3D Subject Sphere / Crest
+  const orbGrad = ctx.createRadialGradient(ox - 35, oy - 35, 20, ox, oy, or);
+  orbGrad.addColorStop(0, theme === "free_fire" ? "#ffaa00" : "#ffffff");
+  orbGrad.addColorStop(0.3, theme === "free_fire" ? "#ff4400" : pal.primary);
+  orbGrad.addColorStop(0.75, theme === "free_fire" ? "#880000" : pal.accent);
+  orbGrad.addColorStop(1, "#0a0a14");
+
+  ctx.fillStyle = orbGrad;
+  ctx.shadowColor = pal.primary;
+  ctx.shadowBlur = 35;
+  ctx.beginPath();
+  ctx.arc(ox, oy, or, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Specular rim stroke
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Icon / Emoji Core
   ctx.fillStyle = "#ffffff";
-  ctx.font = `900 ${Math.floor(w * 0.052)}px 'Plus Jakarta Sans', Impact, sans-serif`;
-  ctx.shadowColor = "rgba(0,0,0,0.85)";
-  ctx.shadowBlur = 18;
+  ctx.font = "bold 100px 'Plus Jakarta Sans', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(theme === "free_fire" ? "🔥" : "⚡", ox, oy);
+  ctx.restore();
+
+  // 4. Punchy 2-Line High-Contrast Headline (Left Column)
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
 
   const words = title.split(" ");
   let l1 = title;
   let l2 = "";
-  if (words.length > 3) {
+  if (words.length > 2) {
     const mid = Math.ceil(words.length / 2);
     l1 = words.slice(0, mid).join(" ");
     l2 = words.slice(mid).join(" ");
   }
 
-  ctx.fillText(l1, 60, h * 0.44);
+  const fontSize = Math.min(Math.floor(w * 0.054), 68);
+  ctx.font = `900 ${fontSize}px 'Plus Jakarta Sans', Impact, sans-serif`;
+
+  // Line 1: Ultra White with Heavy Black Drop Shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#000000";
+  ctx.strokeText(l1, 55, h * 0.40);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(l1, 55, h * 0.40);
+
+  // Line 2: Fluorescent Yellow / Cyan with Heavy Stroke
   if (l2) {
-    ctx.fillStyle = theme === "free_fire" ? "#ffd700" : pal.accent;
-    ctx.fillText(l2, 60, h * 0.58);
+    const l2Color = theme === "free_fire" ? "#ffd700" : "#00ffff";
+    ctx.strokeText(l2, 55, h * 0.55);
+    ctx.fillStyle = l2Color;
+    ctx.shadowColor = l2Color;
+    ctx.shadowBlur = 25;
+    ctx.fillText(l2, 55, h * 0.55);
   }
 
-  ctx.fillStyle = pal.muted;
-  ctx.font = "600 24px 'Plus Jakarta Sans', sans-serif";
-  ctx.fillText(subtitle || "CLICK TO WATCH NOW • FULL TUTORIAL", 60, h * 0.76);
+  // 5. Subtitle Banner / Channel Call to Action
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = pal.muted || "#94a3b8";
+  ctx.font = "bold 22px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText(subtitle || "CLICK TO WATCH NOW • 4K ULTRA HD", 55, h * 0.74);
 
-  // Right Side 3D Orb / Emblem
-  const ox = w * 0.80;
-  const oy = h * 0.50;
-  const or = 130;
-
-  const orbGrad = ctx.createRadialGradient(ox - 25, oy - 25, 20, ox, oy, or);
-  orbGrad.addColorStop(0, theme === "free_fire" ? "#ff5500" : pal.primary);
-  orbGrad.addColorStop(0.6, theme === "free_fire" ? "#990000" : pal.accent);
-  orbGrad.addColorStop(1, "#0a0a14");
-  ctx.fillStyle = orbGrad;
+  // 6. Bottom Right 4K / UHD Badge
+  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
   ctx.beginPath();
-  ctx.arc(ox, oy, or, 0, Math.PI * 2);
+  ctx.roundRect(w - 110, h - 55, 80, 32, 6);
   ctx.fill();
 
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 80px 'Plus Jakarta Sans', sans-serif";
+  ctx.font = "900 14px 'Plus Jakarta Sans', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(theme === "free_fire" ? "🔥" : "✦", ox, oy);
+  ctx.fillText("4K UHD", w - 70, h - 39);
+  ctx.restore();
 }
 
 function drawProPoster(

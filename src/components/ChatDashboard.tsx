@@ -856,19 +856,43 @@ export function ChatDashboard({
       lowerTrimmed.includes("exhaustive breakdown") ||
       lowerTrimmed.includes("comparative study");
 
-    // Advanced Visual Intent & Logo Design Intelligence
+    // Advanced Visual Intent & Creative Media Intelligence
     const visualIntent = parseVisualIntent(trimmed);
     const creativeReq = !visualIntent ? detectCreativeIntent(trimmed) : null;
     let generatedImage: string | null = null;
-    const visualBriefData = visualIntent || undefined;
+
+    const isLogoType =
+      visualIntent &&
+      [
+        "logo",
+        "wordmark",
+        "lettermark",
+        "monogram",
+        "emblem",
+        "badge",
+        "mascot",
+        "icon",
+        "app_icon",
+        "favicon",
+      ].includes(visualIntent.designType);
+
+    // Only logo types get the interactive BrandIdentityCard
+    const visualBriefData = isLogoType ? visualIntent : undefined;
 
     if (visualIntent && visualIntent.isVisualRequest) {
       generatedImage = generateCreativeGraphic({
         title: visualIntent.brandName,
-        subtitle: visualIntent.category === "gaming" ? "OFFICIAL ESPORTS BRAND IDENTITY" : "PREMIUM BRAND IDENTITY",
+        subtitle:
+          visualIntent.style === "gaming"
+            ? "OFFICIAL ESPORTS BRAND IDENTITY"
+            : visualIntent.style === "luxury"
+            ? "BESPOKE LUXURY IDENTITY"
+            : "PREMIUM BRAND IDENTITY",
         category: visualIntent.designType === "logo" ? "logo" : (visualIntent.designType as any),
         theme: visualIntent.theme as any,
-        conceptId: "emblem",
+        conceptId: visualIntent.selectedConceptId || "emblem",
+        style: visualIntent.style,
+        typography: visualIntent.typography,
         initials: visualIntent.initials,
         customPalette: visualIntent.palette as any,
         transparentBg: false,
@@ -891,8 +915,12 @@ export function ChatDashboard({
       setAiStatusMessage("Searching web & grounding sources...");
     } else if (autoDeepResearch) {
       setAiStatusMessage("Synthesizing deep research report...");
-    } else if (visualIntent && visualIntent.designType === "logo") {
-      setAiStatusMessage(`Synthesizing brand identity for "${visualIntent.brandName}"...`);
+    } else if (isLogoType && visualIntent) {
+      setAiStatusMessage(`Synthesizing ${visualIntent.style} brand identity for "${visualIntent.brandName}"...`);
+    } else if (visualIntent && visualIntent.designType === "thumbnail") {
+      setAiStatusMessage(`Generating high-CTR YouTube thumbnail for "${visualIntent.brandName}"...`);
+    } else if (visualIntent && visualIntent.designType === "product_photo") {
+      setAiStatusMessage(`Composing 8K studio product photography for "${visualIntent.brandName}"...`);
     } else if (visualIntent || creativeReq) {
       setAiStatusMessage("Generating custom visual artwork...");
     } else if (websiteReq) {
