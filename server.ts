@@ -119,6 +119,25 @@ app.use("/api/enterprise", enterpriseRouter);
 // Start server with Vite middleware in development or static dist in production
 async function startServer() {
   const publicPath = path.join(process.cwd(), "public");
+
+  // Explicit high-priority endpoints for browser favicons & search crawlers
+  app.get("/favicon.ico", (_req, res) => {
+    res.type("image/x-icon");
+    res.sendFile(path.join(publicPath, "favicon.ico"));
+  });
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain");
+    res.sendFile(path.join(publicPath, "robots.txt"));
+  });
+  app.get("/sitemap.xml", (_req, res) => {
+    res.type("application/xml");
+    res.sendFile(path.join(publicPath, "sitemap.xml"));
+  });
+  app.get("/site.webmanifest", (_req, res) => {
+    res.type("application/manifest+json");
+    res.sendFile(path.join(publicPath, "site.webmanifest"));
+  });
+
   app.use(express.static(publicPath));
 
   if (process.env.NODE_ENV !== "production") {

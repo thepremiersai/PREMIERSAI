@@ -51,9 +51,11 @@ export function Navbar({
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="flex items-center gap-2.5 cursor-pointer select-none"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] flex items-center justify-center text-white font-extrabold text-lg shadow-sm shadow-[#00d4a0]/30">
-            P
-          </div>
+          <img
+            src="/favicon-32x32.png"
+            alt="PREMIERS AI"
+            className="w-9 h-9 rounded-xl object-contain shadow-sm shadow-[#00d4a0]/30"
+          />
           <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
             PREMIERS
             <span className="text-xs px-2 py-0.5 rounded-full bg-[#00d4a0]/15 text-[#00d4a0] border border-[#00d4a0]/30 font-semibold tracking-normal hidden sm:inline-block">

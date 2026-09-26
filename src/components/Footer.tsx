@@ -10,9 +10,11 @@ export function Footer() {
           {/* Brand & Mission */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00d4a0] to-[#00b8d4] flex items-center justify-center text-white font-extrabold text-base">
-                P
-              </div>
+              <img
+                src="/favicon-32x32.png"
+                alt="PREMIERS AI"
+                className="w-8 h-8 rounded-xl object-contain shadow-sm shadow-[#00d4a0]/20"
+              />
               <span className="text-xl font-bold tracking-tight text-white">PREMIERS AI</span>
             </div>
             <p className="text-gray-400 text-xs sm:text-sm leading-relaxed max-w-md">
@@ -51,8 +53,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#ceo" className="hover:text-[#00d4a0] transition-colors">
-                  Founder & CEO
+                <a href="#founders" className="hover:text-[#00d4a0] transition-colors">
+                  Founders & Leadership
                 </a>
               </li>
             </ul>

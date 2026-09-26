@@ -1,49 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="premiersGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00e6a8" />
-      <stop offset="50%" stop-color="#00d4a0" />
-      <stop offset="100%" stop-color="#00b4d8" />
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5c4" />
+      <stop offset="45%" stop-color="#00d4a0" />
+      <stop offset="100%" stop-color="#0099b8" />
+    </linearGradient>
+    <linearGradient id="whiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="70%" stop-color="#f1f5f9" />
+      <stop offset="100%" stop-color="#cbd5e1" />
     </linearGradient>
     <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00d4a0" stop-opacity="0.4" />
+      <stop offset="0%" stop-color="#00d4a0" stop-opacity="0.35" />
       <stop offset="100%" stop-color="#00d4a0" stop-opacity="0" />
     </radialGradient>
-    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35" />
+    <filter id="ribbonShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.55" />
     </filter>
   </defs>
 
-  <!-- Background Base Container -->
+  <!-- Deep Obsidian Space Base -->
   <rect width="512" height="512" rx="112" fill="#0a0a0f" />
   
-  <!-- Subtle Outer Brand Glow -->
-  <rect x="16" y="16" width="480" height="480" rx="100" fill="url(#glowGrad)" />
+  <!-- Subtle Ambient Glow -->
+  <circle cx="256" cy="256" r="220" fill="url(#glowGrad)" />
 
-  <!-- Vibrant Emerald-Cyan Squircle Brand Emblem -->
-  <rect x="36" y="36" width="440" height="440" rx="96" fill="url(#premiersGrad)" filter="url(#subtleShadow)" />
+  <!-- PREMIERS Dual-Ribbon 3D 'P' Monogram -->
+  <g filter="url(#ribbonShadow)" transform="translate(10, 0)">
+    <!-- Lower / Inner Glowing Cyan-Teal Ribbon Fold -->
+    <path d="M 180 370
+             C 176 340, 185 270, 222 225
+             C 250 190, 298 190, 320 190
+             C 290 220, 252 235, 230 270
+             C 214 295, 218 335, 180 370
+             Z"
+          fill="url(#tealGrad)" />
 
-  <!-- Inner High-Tech Highlight Ring -->
-  <rect x="42" y="42" width="428" height="428" rx="90" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="4" />
+    <!-- Cyan Ribbon Accent Wing -->
+    <path d="M 190 240
+             C 230 180, 310 180, 340 190
+             C 300 230, 240 240, 190 240
+             Z"
+          fill="#00f5c4" opacity="0.85" />
 
-  <!-- Precision Cutout Brand Mark: The PREMIERS 'P' Monogram -->
-  <g fill="#ffffff" filter="url(#subtleShadow)">
-    <!-- Main Vertical Stem with angled lower bevel -->
-    <path d="M 148 116 
-             L 268 116 
-             C 328 116, 368 152, 368 212 
-             C 368 272, 328 308, 268 308 
-             L 218 308 
-             L 218 396 
-             L 148 396 
-             Z 
-             M 218 176 
-             L 218 248 
-             L 262 248 
-             C 292 248, 308 232, 308 212 
-             C 308 192, 292 176, 262 176 
-             Z" />
-    <!-- Modern Tech Accent Notch / Cyber Spark -->
-    <circle cx="344" cy="360" r="18" fill="#ffffff" opacity="0.95" />
+    <!-- Upper / Outer White Metallic Ribbon Loop -->
+    <path d="M 195 130
+             L 310 130
+             C 380 130, 420 170, 420 230
+             C 420 290, 380 330, 310 330
+             L 245 330
+             C 285 305, 335 295, 335 230
+             C 335 180, 305 172, 260 172
+             L 235 172
+             Z"
+          fill="url(#whiteGrad)" />
   </g>
 </svg>

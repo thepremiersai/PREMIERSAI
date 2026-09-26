@@ -37,6 +37,86 @@ export interface StreamAIOptions extends GenerateAIOptions {
   signal?: AbortSignal;
 }
 
+export type AIErrorCode =
+  | "AUTH_ERROR"
+  | "RATE_LIMIT"
+  | "PROVIDER_UNAVAILABLE"
+  | "TIMEOUT"
+  | "NETWORK_ERROR"
+  | "INVALID_REQUEST"
+  | "UNKNOWN";
+
+export function classifyAIError(err: any): { code: AIErrorCode; message: string; status: number } {
+  const msg = err?.message || String(err || "");
+  const status = err?.status || err?.code || 500;
+
+  if (
+    status === 401 ||
+    status === 403 ||
+    msg.includes("API key") ||
+    msg.includes("authentication scopes") ||
+    msg.includes("PERMISSION_DENIED")
+  ) {
+    return {
+      code: "AUTH_ERROR",
+      message: "AI configuration or authentication scope issue. Please verify API credentials.",
+      status: 403,
+    };
+  }
+
+  if (
+    status === 429 ||
+    msg.includes("429") ||
+    msg.includes("RESOURCE_EXHAUSTED") ||
+    msg.includes("Quota exceeded") ||
+    msg.includes("rate-limits")
+  ) {
+    return {
+      code: "RATE_LIMIT",
+      message: "AI provider rate limit / quota exceeded. Please wait a moment before retrying.",
+      status: 429,
+    };
+  }
+
+  if (
+    status === 503 ||
+    status === 502 ||
+    status === 504 ||
+    msg.includes("503") ||
+    msg.includes("UNAVAILABLE") ||
+    msg.includes("overloaded") ||
+    msg.includes("high demand")
+  ) {
+    return {
+      code: "PROVIDER_UNAVAILABLE",
+      message: "AI provider is currently experiencing temporary high demand.",
+      status: 503,
+    };
+  }
+
+  if (msg.includes("abort") || msg.includes("timeout") || msg.includes("ETIMEDOUT")) {
+    return {
+      code: "TIMEOUT",
+      message: "Request timed out while waiting for AI provider response.",
+      status: 504,
+    };
+  }
+
+  if (msg.includes("ENOTFOUND") || msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
+    return {
+      code: "NETWORK_ERROR",
+      message: "Network connectivity issue with external AI provider.",
+      status: 502,
+    };
+  }
+
+  return {
+    code: "UNKNOWN",
+    message: msg || "An unexpected error occurred during processing.",
+    status: 500,
+  };
+}
+
 /**
  * Ordered list of official, supported Gemini models per gemini-api skill guidelines.
  * Modern default for basic text and complex reasoning is gemini-3.8-flash.

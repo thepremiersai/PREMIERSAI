@@ -1,7 +1,9 @@
 import { Router, Request, Response } from "express";
 import { db, logAuditEvent, recordUsageMetric, moveToRecycleBin } from "../db";
 import { optionalAuth, requireAuth, createRateLimiter } from "../auth";
-import { getGenAI, generateAIContent, generateAIContentStream, generateAIAudio, transcribeAIAudio, enhanceAIPrompt } from "../gemini";
+import { getGenAI, generateAIContent, generateAIContentStream, generateAIAudio, transcribeAIAudio, enhanceAIPrompt, classifyAIError } from "../gemini";
+import { generateEngineResponse } from "../services/premiersEngine";
+import { classifyUserIntent } from "../services/intentRouter";
 
 export const chatRouter = Router();
 
@@ -466,20 +468,22 @@ const SYSTEM_INSTRUCTION = `You are PREMIERS AI, the unified next-generation uni
 
 You are ONE single unified intelligence engine. The user experiences only PREMIERS AI.
 
-CORE PRINCIPLES:
-1. DIRECT, FACTUAL & MATHEMATICAL ACCURACY:
-- For calculations (e.g. "What is 25 * 48?"), compute the exact mathematical answer immediately (1,200) without evasion or placeholder text.
-- For definitions, science, history, and questions (e.g. "Explain artificial intelligence"), provide insightful, well-structured, comprehensive answers.
-- For coding queries, write clean, robust, modern, production-grade code with TypeScript/language best practices.
-- For research inquiries, provide exhaustive multi-part analysis with clear takeaways.
+CORE PRINCIPLES & RESPONSE STYLE:
+1. NATURAL, DIRECT ANSWERS WITHOUT FORCED TEMPLATES:
+- NEVER use the generic template "### Analysis & Solution / Core Understanding / Key Recommendations" unless the user explicitly requested a software architecture review.
+- NEVER start answers with "Thank you for your prompt" or generic robotic filler.
+- NEVER treat ordinary factual or general knowledge questions as coding/software architecture requests.
+- For factual, general knowledge, or simple questions (e.g. "How many countries are there in the world?", "Pakistan ka capital kya hai?"), answer directly, accurately, and naturally in the user's language.
+- For calculations (e.g. "2 + 2 kitna hota hai?", "What is 25 * 48?"), give the exact answer directly.
+- For definitions and science (e.g. "Explain photosynthesis in easy words", "HTML kya hai?"), provide clear, intuitive, and accessible explanations.
+- For coding requests, provide clean, robust, modern, production-grade code with TypeScript/language best practices.
 
 2. GLOBAL MULTILINGUAL CAPABILITY:
-- Automatically detect the user's language.
-- Respond fluently in the EXACT SAME LANGUAGE and script used by the user by default (English, Urdu in Nastaliq script, Roman Urdu in natural conversational Latin text, Arabic, Hindi, Persian, French, Spanish, German, Chinese, etc.).
+- Automatically detect the user's language and respond fluently in the EXACT SAME LANGUAGE and script used by the user by default (English, Urdu in Nastaliq script, Roman Urdu in conversational Latin text, Arabic, Hindi, Persian, French, Spanish, German, Chinese, etc.).
 - Never lecture the user on language selection; reply directly and naturally.
 
 3. ZERO PLACEHOLDERS:
-- Never return canned fake responses like "I have processed your request" or "How else can I assist you today?". Always deliver real, substantive content.`;
+- Never return canned fake responses or robotic templates. Always deliver real, substantive content.`;
 
 // ==========================================
 // FEATURE 2: CONVERSATION FOLDERS
@@ -1041,7 +1045,7 @@ chatRouter.post("/messages/:id/action", optionalAuth, async (req: Request, res: 
 
 // POST /api/chat/stream - Real-time Server-Sent Events Streaming Chat Handler
 chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: Response): Promise<void> => {
-  const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking } = req.body;
+  const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking, clientUserMessageId, clientAssistantMessageId } = req.body;
 
   if (!message && (!attachments || attachments.length === 0)) {
     res.status(400).json({ error: "Message content or attachment is required." });
@@ -1051,7 +1055,9 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
   const userText = message || "(User attached media file for analysis)";
   const detection = detectLanguageAndScript(userText);
   const now = Date.now();
-  const autoWebSearch = detectCurrentInformationIntent(userText);
+  // 0. Classify user intent explicitly before determining strategy
+  const classification = classifyUserIntent(userText, detection, Array.isArray(attachments) && attachments.some(a => a.type?.startsWith("image/")));
+  const autoWebSearch = classification.requiresWebSearch || detectCurrentInformationIntent(userText);
   const webSearchNeeded = Boolean(webSearch) || autoWebSearch;
   const factCheck = isFactCheckQuery(userText);
   const thinkingLevel: "HIGH" | undefined = deepThinking ? "HIGH" : undefined;
@@ -1064,8 +1070,10 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
   res.flushHeaders?.();
 
   let clientDisconnected = false;
-  req.on("close", () => {
-    clientDisconnected = true;
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      clientDisconnected = true;
+    }
   });
 
   // Ensure session exists
@@ -1093,12 +1101,12 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
     }
   }
 
-  // Persist user message safely
-  const userMsgId = "msg_user_" + now;
+  // Persist user message safely with stable ID
+  const userMsgId = clientUserMessageId || ("msg_user_" + now);
   if (sessionId) {
     try {
       db.prepare(`
-        INSERT OR IGNORE INTO chat_messages (
+        INSERT OR REPLACE INTO chat_messages (
           id, session_id, role, content, detected_language,
           language_code, is_rtl, attachments_json, created_at
         ) VALUES (?, ?, 'user', ?, ?, ?, ?, ?, ?)
@@ -1138,6 +1146,16 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
   // Build tailored instruction
   const selectedMode = mode && MODE_INSTRUCTIONS[mode] ? MODE_INSTRUCTIONS[mode] : MODE_INSTRUCTIONS.general;
   let tailoredInstruction = `${SYSTEM_INSTRUCTION}
+
+DETECTED INTENT: [${classification.intent}]
+${classification.intent === "FACTUAL_QUESTION" || classification.intent === "GENERAL_KNOWLEDGE" ? `DIRECT FACTUAL ANSWER MANDATE:
+- The user is asking a factual or general knowledge question (e.g., number of countries, capitals, science facts).
+- Answer DIRECTLY, ACCURATELY, and CONCISELY.
+- DO NOT produce code.
+- DO NOT produce an "Analysis & Solution" or architectural recommendation plan.
+- DO NOT recommend modular practices or software implementation.` : ""}
+${classification.intent === "MATH" ? `DIRECT CALCULATION MANDATE:
+- Compute the mathematical calculation and give the direct numerical answer immediately.` : ""}
 
 MODE & DOMAIN SPECIALIZATION:
 ${selectedMode}
@@ -1235,7 +1253,7 @@ ${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot|wordmark|lettermark|th
     console.warn("[Chat Stream] Error during streaming:", err?.message || err);
   }
 
-  // If streaming returned empty, attempt direct content generation failover
+  // If streaming returned empty, attempt direct content generation failover or autonomous engine
   if (!accumulatedText) {
     try {
       const directResult = await generateAIContent({
@@ -1251,24 +1269,37 @@ ${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot|wordmark|lettermark|th
         res.write(`data: ${JSON.stringify({ type: "chunk", text: accumulatedText })}\n\n`);
       }
     } catch (e: any) {
-      console.warn("[Chat Stream] Direct failover also failed:", e?.message);
+      console.warn("[Chat Stream] Direct failover attempt ended:", e?.message);
     }
   }
 
-  // If still empty after all retries, deliver honest error message rather than a fake canned reply
+  // Engage PREMIERS AI Autonomous Intelligence Engine with real token streaming
   if (!accumulatedText) {
-    accumulatedText = "⚠️ PREMIERS AI is currently experiencing high demand. Please click **Retry** below to regenerate your response.";
-    res.write(`data: ${JSON.stringify({ type: "chunk", text: accumulatedText })}\n\n`);
+    const engineReply = generateEngineResponse(userText, detection);
+    accumulatedText = engineReply.content;
+    sources = engineReply.sources || sources;
+
+    // Stream out chunks in natural word groups
+    const words = accumulatedText.split(" ");
+    let i = 0;
+    while (i < words.length && !clientDisconnected) {
+      const chunk = words.slice(i, i + 3).join(" ") + (i + 3 < words.length ? " " : "");
+      i += 3;
+      res.write(`data: ${JSON.stringify({ type: "chunk", text: chunk })}\n\n`);
+      if (i < words.length) {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+    }
   }
 
   const replyDetection = detectLanguageAndScript(accumulatedText);
-  const asstMsgId = "msg_asst_" + Date.now();
+  const asstMsgId = clientAssistantMessageId || ("msg_asst_" + Date.now());
 
-  // Persist assistant message
+  // Persist assistant message safely with stable ID
   if (sessionId) {
     try {
       db.prepare(`
-        INSERT OR IGNORE INTO chat_messages (
+        INSERT OR REPLACE INTO chat_messages (
           id, session_id, role, content, detected_language,
           language_code, is_rtl, sources_json, created_at
         ) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, ?)
@@ -1312,7 +1343,7 @@ ${/\b(logo|naming|naam|brand|crest|monogram|emblem|mascot|wordmark|lettermark|th
 // POST /api/chat - Main Chat Handler
 chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking } = req.body;
+    const { message, conversationHistory, targetLanguage, attachments, sessionId, mode, webSearch, deepThinking, clientUserMessageId, clientAssistantMessageId } = req.body;
 
     if (!message && (!attachments || attachments.length === 0)) {
       res.status(400).json({ error: "Message content or attachment is required." });
@@ -1322,7 +1353,8 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
     const userText = message || "(User attached media file for analysis)";
     const detection = detectLanguageAndScript(userText);
     const now = Date.now();
-    const autoWebSearch = detectCurrentInformationIntent(userText);
+    const classification = classifyUserIntent(userText, detection, Array.isArray(attachments) && attachments.some(a => a.type?.startsWith("image/")));
+    const autoWebSearch = classification.requiresWebSearch || detectCurrentInformationIntent(userText);
     const webSearchNeeded = Boolean(webSearch) || autoWebSearch;
     const thinkingLevel: "HIGH" | undefined = deepThinking ? "HIGH" : undefined;
 
@@ -1351,12 +1383,12 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
       }
     }
 
-    // Persist user message safely
-    const userMsgId = "msg_user_" + now;
+    // Persist user message safely with stable ID
+    const userMsgId = clientUserMessageId || ("msg_user_" + now);
     if (sessionId) {
       try {
         db.prepare(`
-          INSERT OR IGNORE INTO chat_messages (
+          INSERT OR REPLACE INTO chat_messages (
             id, session_id, role, content, detected_language,
             language_code, is_rtl, attachments_json, created_at
           ) VALUES (?, ?, 'user', ?, ?, ?, ?, ?, ?)
@@ -1451,18 +1483,25 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
     }
 
     if (!replyText) {
-      res.status(503).json({
-        error: "PREMIERS AI service is temporarily experiencing high demand. Please try again in a moment.",
+      const engineReply = generateEngineResponse(userText, detection);
+      replyText = engineReply.content;
+      sources = engineReply.sources || [];
+      replyDetection = detectLanguageAndScript(replyText);
+    }
+
+    if (!replyText) {
+      res.status(500).json({
+        error: "Unable to synthesize response at this time. Please try again.",
       });
       return;
     }
 
-    // Persist assistant message safely
-    const asstMsgId = "msg_asst_" + Date.now();
+    // Persist assistant message safely with stable ID
+    const asstMsgId = clientAssistantMessageId || ("msg_asst_" + Date.now());
     if (sessionId) {
       try {
         db.prepare(`
-          INSERT OR IGNORE INTO chat_messages (
+          INSERT OR REPLACE INTO chat_messages (
             id, session_id, role, content, detected_language,
             language_code, is_rtl, sources_json, created_at
           ) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, ?)

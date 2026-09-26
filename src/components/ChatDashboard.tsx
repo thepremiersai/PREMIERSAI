@@ -354,9 +354,40 @@ export function ChatDashboard({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isSendingRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Pure function to sanitize messages map: removes duplicate IDs and empty assistant messages
+  const sanitizeMessagesMap = (rawMap: Record<string, Message[]>): Record<string, Message[]> => {
+    const cleanMap: Record<string, Message[]> = {};
+    for (const [sId, msgs] of Object.entries(rawMap || {})) {
+      if (!Array.isArray(msgs)) continue;
+      const seenIds = new Set<string>();
+      const cleanList: Message[] = [];
+      for (const m of msgs) {
+        if (!m || !m.id || seenIds.has(m.id)) continue;
+        seenIds.add(m.id);
+        // Strip out any blank assistant message that has no text, images, or visual components
+        if (
+          m.role === "assistant" &&
+          !m.content?.trim() &&
+          !m.visualBrief &&
+          (!m.images || m.images.length === 0) &&
+          !m.websiteHtml
+        ) {
+          continue;
+        }
+        cleanList.push({
+          ...m,
+          isStreaming: false, // On storage restore, never leave dangling streaming state
+        });
+      }
+      cleanMap[sId] = cleanList;
+    }
+    return cleanMap;
+  };
 
   // Load chats on mount
   useEffect(() => {
@@ -365,9 +396,10 @@ export function ChatDashboard({
       if (savedData) {
         const parsed = JSON.parse(savedData);
         if (parsed.sessions && parsed.sessions.length > 0) {
+          const cleanMap = sanitizeMessagesMap(parsed.messagesMap || {});
           setSessions(parsed.sessions);
           setActiveSessionId(parsed.sessions[0].id);
-          setMessagesMap(parsed.messagesMap || {});
+          setMessagesMap(cleanMap);
           return;
         }
       }
@@ -399,14 +431,15 @@ export function ChatDashboard({
     });
   }, []);
 
-  // Save chats when updated
+  // Save chats when updated with automatic sanitation
   const saveChatsToStorage = (updatedSessions: ChatSession[], updatedMessages: Record<string, Message[]>) => {
     try {
+      const sanitized = sanitizeMessagesMap(updatedMessages);
       localStorage.setItem(
         "premiers_chats_data",
         JSON.stringify({
           sessions: updatedSessions,
-          messagesMap: updatedMessages,
+          messagesMap: sanitized,
         })
       );
     } catch (e) {
@@ -431,8 +464,29 @@ export function ChatDashboard({
     scrollToBottom();
   }, [messagesMap, activeSessionId, isAiThinking]);
 
-  // Current session messages
-  const currentMessages = activeSessionId ? messagesMap[activeSessionId] || [] : [];
+  // Current session messages with strict deduplication and blank message filtering
+  const rawCurrentMessages = activeSessionId ? messagesMap[activeSessionId] || [] : [];
+  const currentMessages = React.useMemo(() => {
+    const seenIds = new Set<string>();
+    const sanitized: Message[] = [];
+    for (const m of rawCurrentMessages) {
+      if (!m || !m.id || seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      // Filter out any blank assistant message that is NOT actively streaming and has no visuals
+      if (
+        m.role === "assistant" &&
+        !m.content?.trim() &&
+        !m.isStreaming &&
+        !m.visualBrief &&
+        (!m.images || m.images.length === 0) &&
+        !m.websiteHtml
+      ) {
+        continue;
+      }
+      sanitized.push(m);
+    }
+    return sanitized;
+  }, [rawCurrentMessages]);
 
   // Create New Chat
   const handleNewChat = () => {
@@ -752,6 +806,7 @@ export function ChatDashboard({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    isSendingRef.current = false;
     setIsAiThinking(false);
   };
 
@@ -788,19 +843,26 @@ export function ChatDashboard({
     e.target.value = "";
   };
 
-  // Send Message Core
+  // Send Message Core with Strict Single-Message-Lifecycle Guarantee
   const executeSendMessage = async (textToSend: string, customAttachments?: Attachment[]) => {
     const trimmed = textToSend.trim();
     const effectiveAttachments = customAttachments || attachments;
     if (!trimmed && effectiveAttachments.length === 0) return;
-    if (isAiThinking) return;
+
+    // Concurrency Lock: Prevents double Enter / double click from dispatching 2 requests
+    if (isSendingRef.current || isAiThinking) return;
+    isSendingRef.current = true;
 
     const userIsRTL = isTextRTL(trimmed);
+    const now = Date.now();
+    const userMsgId = `msg_user_${now}_${Math.random().toString(36).substring(2, 7)}`;
+    const assistantMsgId = `msg_asst_${now + 1}_${Math.random().toString(36).substring(2, 7)}`;
+
     const userMsg: Message = {
-      id: "msg_" + Date.now(),
+      id: userMsgId,
       role: "user",
       content: trimmed,
-      timestamp: Date.now(),
+      timestamp: now,
       isRTL: userIsRTL,
       attachments: effectiveAttachments,
     };
@@ -813,48 +875,40 @@ export function ChatDashboard({
       setSessions(updatedSessions);
     }
 
-    const updatedCurrentMessages = [...currentMessages, userMsg];
-    const newMap = {
-      ...messagesMap,
-      [activeSessionId]: updatedCurrentMessages,
-    };
-    setMessagesMap(newMap);
-    setInputText("");
-    setAttachments([]);
-    setIsAiThinking(true);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
     // Set abort controller for Stop Generation
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // PART 5 & 6 & 7: Automatic Tool Intelligence Detection
+    // PART 5 & 6 & 7: Automatic Tool Intelligence Detection (Optimized for Simple Queries)
     const lowerTrimmed = trimmed.toLowerCase();
-    const autoWebSearch =
-      lowerTrimmed.includes("news") ||
-      lowerTrimmed.includes("today") ||
-      lowerTrimmed.includes("latest") ||
-      lowerTrimmed.includes("current") ||
-      lowerTrimmed.includes("stock") ||
-      lowerTrimmed.includes("weather") ||
-      lowerTrimmed.includes("price") ||
-      lowerTrimmed.includes("score") ||
-      lowerTrimmed.includes("who won") ||
-      lowerTrimmed.includes("2025") ||
-      lowerTrimmed.includes("2026") ||
-      lowerTrimmed.includes("update") ||
-      lowerTrimmed.includes("recent") ||
-      lowerTrimmed.includes("what happened");
 
-    const autoDeepResearch =
+    // Simple queries (Greetings, HTML, AI, arithmetic, identity) respond at maximum speed with zero tool delays
+    const isSimpleDirectQuery =
+      lowerTrimmed.length < 50 &&
+      (
+        /^(hello|hi|hey|salam|aoa)\b/i.test(lowerTrimmed) ||
+        /^(what is|explain|define|tell me about)\s+(ai|html|javascript|js|css|python|react|programming)/i.test(lowerTrimmed) ||
+        /^(who are you|who made you|who created you)\b/i.test(lowerTrimmed) ||
+        /^[0-9\.\s\+\-\*\/\^\(\)\%\=]+$/.test(lowerTrimmed) ||
+        /^(what is\s+)?[0-9\.\s\+\-\*\/\^]+\??$/i.test(lowerTrimmed)
+      );
+
+    const autoWebSearch = !isSimpleDirectQuery && (
+      lowerTrimmed.includes("latest news") ||
+      lowerTrimmed.includes("today's news") ||
+      lowerTrimmed.includes("stock price") ||
+      lowerTrimmed.includes("weather in") ||
+      lowerTrimmed.includes("who won the") ||
+      lowerTrimmed.includes("current exchange rate")
+    );
+
+    const autoDeepResearch = !isSimpleDirectQuery && (
       lowerTrimmed.includes("deep research") ||
       lowerTrimmed.includes("comprehensive analysis") ||
       lowerTrimmed.includes("detailed study") ||
       lowerTrimmed.includes("exhaustive breakdown") ||
-      lowerTrimmed.includes("comparative study");
+      lowerTrimmed.includes("comparative study")
+    );
 
     // Advanced Visual Intent & Creative Media Intelligence
     const visualIntent = parseVisualIntent(trimmed);
@@ -880,14 +934,22 @@ export function ChatDashboard({
     const visualBriefData = isLogoType ? visualIntent : undefined;
 
     if (visualIntent && visualIntent.isVisualRequest) {
+      const isGaming = visualIntent.style === "gaming" || visualIntent.category === "gaming";
+      const isLuxury = visualIntent.style === "luxury" || visualIntent.category === "luxury";
+      const isThumbnail = visualIntent.designType === "thumbnail";
+      const isCity = visualIntent.theme === "cyber_city";
+
+      let displaySubtitle = "PREMIUM BRAND IDENTITY";
+      if (isGaming) displaySubtitle = "OFFICIAL ESPORTS BRAND IDENTITY";
+      else if (isLuxury) displaySubtitle = "BESPOKE LUXURY IDENTITY";
+      else if (isThumbnail) displaySubtitle = "4K YOUTUBE THUMBNAIL • HIGH CTR";
+      else if (isCity) displaySubtitle = "FUTURISTIC CYBERPUNK METROPOLIS • 4K ARTWORK";
+      else if (visualIntent.designType === "product_photo") displaySubtitle = "8K STUDIO COMMERCIAL ADVERTISEMENT";
+      else if (visualIntent.designType === "poster") displaySubtitle = "HIGH RESOLUTION PROMOTIONAL POSTER";
+
       generatedImage = generateCreativeGraphic({
         title: visualIntent.brandName,
-        subtitle:
-          visualIntent.style === "gaming"
-            ? "OFFICIAL ESPORTS BRAND IDENTITY"
-            : visualIntent.style === "luxury"
-            ? "BESPOKE LUXURY IDENTITY"
-            : "PREMIUM BRAND IDENTITY",
+        subtitle: displaySubtitle,
         category: visualIntent.designType === "logo" ? "logo" : (visualIntent.designType as any),
         theme: visualIntent.theme as any,
         conceptId: visualIntent.selectedConceptId || "emblem",
@@ -909,46 +971,102 @@ export function ChatDashboard({
     const websiteReq = detectWebsiteIntent(trimmed);
     const websiteCode = websiteReq ? websiteReq.htmlCode : null;
 
+    let initialStatus = "PREMIERS AI is reasoning...";
     if (isDeepThinking) {
-      setAiStatusMessage("Deep Thinking & Multi-Step Reasoning Active...");
+      initialStatus = "Deep Thinking & Multi-Step Reasoning Active...";
     } else if (autoWebSearch) {
-      setAiStatusMessage("Searching web & grounding sources...");
+      initialStatus = "Searching web & grounding sources...";
     } else if (autoDeepResearch) {
-      setAiStatusMessage("Synthesizing deep research report...");
+      initialStatus = "Synthesizing deep research report...";
     } else if (isLogoType && visualIntent) {
-      setAiStatusMessage(`Synthesizing ${visualIntent.style} brand identity for "${visualIntent.brandName}"...`);
+      initialStatus = `Synthesizing ${visualIntent.style} brand identity for "${visualIntent.brandName}"...`;
     } else if (visualIntent && visualIntent.designType === "thumbnail") {
-      setAiStatusMessage(`Generating high-CTR YouTube thumbnail for "${visualIntent.brandName}"...`);
+      initialStatus = `Generating high-CTR YouTube thumbnail for "${visualIntent.brandName}"...`;
     } else if (visualIntent && visualIntent.designType === "product_photo") {
-      setAiStatusMessage(`Composing 8K studio product photography for "${visualIntent.brandName}"...`);
+      initialStatus = `Composing 8K studio product photography for "${visualIntent.brandName}"...`;
     } else if (visualIntent || creativeReq) {
-      setAiStatusMessage("Generating custom visual artwork...");
+      initialStatus = "Generating custom visual artwork...";
     } else if (websiteReq) {
-      setAiStatusMessage("Architecting interactive web application...");
-    } else {
-      setAiStatusMessage("PREMIERS AI is reasoning...");
+      initialStatus = "Architecting interactive web application...";
     }
+    setAiStatusMessage(initialStatus);
 
-    // Create streaming assistant placeholder message
-    const assistantMsgId = "msg_asst_" + (Date.now() + 1);
-    const placeholderAssistantMsg: Message = {
+    const activeSession = activeSessionId;
+    if (!activeSession) return;
+
+    // Single unified assistant message created upfront with stable ID
+    const initialAssistantMsg: Message = {
       id: assistantMsgId,
       role: "assistant",
       content: "",
-      timestamp: Date.now(),
+      timestamp: now + 1,
       isStreaming: true,
+      statusMessage: initialStatus,
       isRTL: false,
       images: generatedImage ? [generatedImage] : [],
       visualBrief: visualBriefData,
       websiteHtml: websiteCode || undefined,
     };
 
-    // Immediately display assistant bubble in streaming state
-    const streamingList = [...updatedCurrentMessages, placeholderAssistantMsg];
-    setMessagesMap({
-      ...messagesMap,
-      [activeSessionId]: streamingList,
+    // Atomic functional update: Appends userMsg + initialAssistantMsg in one step
+    // and eliminates any orphaned/blank assistant messages from previous turns
+    setMessagesMap((prev) => {
+      const existing = prev[activeSession] || [];
+      const sanitized = existing.filter(
+        (m) =>
+          m.id !== userMsgId &&
+          m.id !== assistantMsgId &&
+          !(m.role === "assistant" && !m.content?.trim() && !m.isStreaming && !m.visualBrief && (!m.images || m.images.length === 0) && !m.websiteHtml)
+      );
+      return {
+        ...prev,
+        [activeSession]: [...sanitized, userMsg, initialAssistantMsg],
+      };
     });
+
+    setInputText("");
+    setAttachments([]);
+    setIsAiThinking(true);
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
+    // Helper to update this exact assistant message in place idempotently
+    const updateAssistantMsg = (updater: (prevMsg: Message) => Message) => {
+      setMessagesMap((prev) => {
+        const list = prev[activeSession] || [];
+        let matched = false;
+        const updatedList = list.map((m) => {
+          if (m.id === assistantMsgId) {
+            matched = true;
+            return updater(m);
+          }
+          return m;
+        });
+
+        // If not matched by exact ID, find any trailing streaming assistant message
+        if (!matched) {
+          for (let i = updatedList.length - 1; i >= 0; i--) {
+            if (updatedList[i].role === "assistant" && (updatedList[i].isStreaming || !updatedList[i].content?.trim())) {
+              updatedList[i] = updater(updatedList[i]);
+              matched = true;
+              break;
+            }
+          }
+        }
+
+        // Only append if strictly not present
+        if (!matched) {
+          updatedList.push(updater(initialAssistantMsg));
+        }
+
+        return {
+          ...prev,
+          [activeSession]: updatedList,
+        };
+      });
+    };
 
     let accumulatedText = "";
     let accumulatedSources: any[] = [];
@@ -958,7 +1076,13 @@ export function ChatDashboard({
 
     try {
       const token = localStorage.getItem("premiers_auth_token");
-      
+
+      // Capture history up to this point (excluding current streaming assistant message)
+      const convHistory = currentMessages.slice(-10).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       // Attempt SSE streaming first
       const streamResponse = await fetch("/api/chat/stream", {
         method: "POST",
@@ -969,12 +1093,11 @@ export function ChatDashboard({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          sessionId: activeSessionId,
+          sessionId: activeSession,
+          clientUserMessageId: userMsgId,
+          clientAssistantMessageId: assistantMsgId,
           message: trimmed,
-          conversationHistory: updatedCurrentMessages.slice(-10).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          conversationHistory: convHistory,
           attachments: effectiveAttachments,
           targetLanguage: selectedLanguage,
           webSearch: autoWebSearch,
@@ -1004,19 +1127,17 @@ export function ChatDashboard({
                 const parsed = JSON.parse(dataStr);
                 if (parsed.type === "chunk" && parsed.text) {
                   accumulatedText += parsed.text;
-                  setMessagesMap((prev) => {
-                    const current = prev[activeSessionId] || [];
-                    return {
-                      ...prev,
-                      [activeSessionId]: current.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, content: accumulatedText, isStreaming: true }
-                          : m
-                      ),
-                    };
-                  });
+                  updateAssistantMsg((m) => ({
+                    ...m,
+                    content: accumulatedText,
+                    isStreaming: true,
+                  }));
                 } else if (parsed.type === "status" && parsed.message) {
                   setAiStatusMessage(parsed.message);
+                  updateAssistantMsg((m) => ({
+                    ...m,
+                    statusMessage: parsed.message,
+                  }));
                 } else if (parsed.type === "sources") {
                   if (parsed.sources && parsed.sources.length > 0) {
                     accumulatedSources = parsed.sources;
@@ -1024,17 +1145,11 @@ export function ChatDashboard({
                   if (parsed.searchQueries && parsed.searchQueries.length > 0) {
                     accumulatedQueries = parsed.searchQueries;
                   }
-                  setMessagesMap((prev) => {
-                    const current = prev[activeSessionId] || [];
-                    return {
-                      ...prev,
-                      [activeSessionId]: current.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, sources: accumulatedSources, searchQueries: accumulatedQueries }
-                          : m
-                      ),
-                    };
-                  });
+                  updateAssistantMsg((m) => ({
+                    ...m,
+                    sources: accumulatedSources,
+                    searchQueries: accumulatedQueries,
+                  }));
                 } else if (parsed.type === "meta") {
                   if (parsed.detectedLanguage) detectedLang = parsed.detectedLanguage;
                   if (typeof parsed.isRTL === "boolean") isRtl = parsed.isRTL;
@@ -1067,12 +1182,11 @@ export function ChatDashboard({
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            sessionId: activeSessionId,
+            sessionId: activeSession,
+            clientUserMessageId: userMsgId,
+            clientAssistantMessageId: assistantMsgId,
             message: trimmed,
-            conversationHistory: updatedCurrentMessages.slice(-8).map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            conversationHistory: convHistory.slice(-8),
             attachments: effectiveAttachments,
             targetLanguage: selectedLanguage,
             webSearch: autoWebSearch,
@@ -1102,84 +1216,144 @@ export function ChatDashboard({
 
       const isGenerationFailed = !finalContent.trim();
       if (isGenerationFailed) {
-        finalContent = "⚠️ PREMIERS AI was temporarily unable to generate a response due to high demand. Please click **Retry** below.";
+        finalContent = "⚠️ The response could not be generated. Please click **Retry** below to resend your query.";
       }
 
-      // Finalize assistant message
-      const finalizedAssistantMsg: Message = {
-        id: assistantMsgId,
-        role: "assistant",
-        content: finalContent,
-        timestamp: Date.now(),
-        isStreaming: false,
-        isError: isGenerationFailed,
-        detectedLanguage: detectedLang,
-        isRTL: isRtl,
-        sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
-        searchQueries: accumulatedQueries.length > 0 ? accumulatedQueries : undefined,
-        images: generatedImage ? [generatedImage] : [],
-        visualBrief: visualBriefData,
-        websiteHtml: websiteCode || undefined,
-      };
+      // Finalize the exact same assistant message in place and persist
+      setMessagesMap((prev) => {
+        const list = prev[activeSession] || [];
+        let matched = false;
+        const updatedList = list.map((m) => {
+          if (m.id === assistantMsgId) {
+            matched = true;
+            return {
+              ...m,
+              content: finalContent,
+              isStreaming: false,
+              isError: isGenerationFailed,
+              detectedLanguage: detectedLang,
+              isRTL: isRtl,
+              sources: accumulatedSources.length > 0 ? accumulatedSources : m.sources,
+              searchQueries: accumulatedQueries.length > 0 ? accumulatedQueries : m.searchQueries,
+              images: generatedImage ? [generatedImage] : m.images,
+              visualBrief: visualBriefData || m.visualBrief,
+              websiteHtml: websiteCode || m.websiteHtml,
+            };
+          }
+          return m;
+        });
 
-      const finalMessages = [...updatedCurrentMessages, finalizedAssistantMsg];
-      const finalMap = {
-        ...messagesMap,
-        [activeSessionId]: finalMessages,
-      };
-      setMessagesMap(finalMap);
-      saveChatsToStorage(updatedSessions, finalMap);
+        if (!matched) {
+          for (let i = updatedList.length - 1; i >= 0; i--) {
+            if (updatedList[i].role === "assistant" && (updatedList[i].isStreaming || !updatedList[i].content?.trim())) {
+              updatedList[i] = {
+                ...updatedList[i],
+                content: finalContent,
+                isStreaming: false,
+                isError: isGenerationFailed,
+                detectedLanguage: detectedLang,
+                isRTL: isRtl,
+                sources: accumulatedSources.length > 0 ? accumulatedSources : updatedList[i].sources,
+                searchQueries: accumulatedQueries.length > 0 ? accumulatedQueries : updatedList[i].searchQueries,
+                images: generatedImage ? [generatedImage] : updatedList[i].images,
+                visualBrief: visualBriefData || updatedList[i].visualBrief,
+                websiteHtml: websiteCode || updatedList[i].websiteHtml,
+              };
+              matched = true;
+              break;
+            }
+          }
+        }
+
+        // Clean out any blank assistant messages and deduplicate
+        const seen = new Set<string>();
+        const sanitized = updatedList.filter((m) => {
+          if (!m || !m.id || seen.has(m.id)) return false;
+          seen.add(m.id);
+          if (
+            m.role === "assistant" &&
+            !m.content?.trim() &&
+            !m.visualBrief &&
+            (!m.images || m.images.length === 0) &&
+            !m.websiteHtml
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        const nextMap = {
+          ...prev,
+          [activeSession]: sanitized,
+        };
+        saveChatsToStorage(updatedSessions, nextMap);
+        return nextMap;
+      });
     } catch (err: any) {
-      if (err?.name === "AbortError") {
-        const stoppedMsg: Message = {
-          id: assistantMsgId,
-          role: "assistant",
-          content: accumulatedText ? accumulatedText + "\n\n*(Generation stopped by user)*" : "*(Generation stopped by user)*",
-          timestamp: Date.now(),
-          isStreaming: false,
-          isRTL: false,
-          sources: accumulatedSources.length > 0 ? accumulatedSources : undefined,
-        };
-        const finalMessages = [...updatedCurrentMessages, stoppedMsg];
-        const finalMap = {
-          ...messagesMap,
-          [activeSessionId]: finalMessages,
-        };
-        setMessagesMap(finalMap);
-        saveChatsToStorage(updatedSessions, finalMap);
-        return;
+      const isAbort = err?.name === "AbortError";
+      let errorContent = accumulatedText;
+      if (isAbort) {
+        errorContent = accumulatedText ? accumulatedText + "\n\n*(Generation stopped by user)*" : "*(Generation stopped by user)*";
+      } else if (!accumulatedText) {
+        const rawMsg = err?.message || String(err || "");
+        if (rawMsg.includes("429") || rawMsg.includes("quota") || rawMsg.includes("rate limit") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
+          errorContent = "⚠️ AI provider rate limit reached. Please wait a moment and click **Retry** below.";
+        } else if (rawMsg.includes("401") || rawMsg.includes("403") || rawMsg.includes("auth") || rawMsg.includes("PERMISSION_DENIED")) {
+          errorContent = "⚠️ AI service configuration/authentication issue. Please click **Retry** below.";
+        } else if (rawMsg.includes("timeout") || rawMsg.includes("timed out") || rawMsg.includes("ETIMEDOUT")) {
+          errorContent = "⚠️ The request timed out. Please check your network connection and click **Retry** below.";
+        } else {
+          errorContent = "⚠️ Connection issue encountered. Please click **Retry** below to resend your query.";
+        }
       }
 
-      console.error("Chat communication error:", err);
-      const fallbackMsg: Message = {
-        id: assistantMsgId,
-        role: "assistant",
-        content: accumulatedText || "⚠️ I encountered a temporary connection issue. Please click **Retry** below to resend your query.",
-        timestamp: Date.now(),
-        isStreaming: false,
-        isRTL: false,
-        isError: !accumulatedText,
-      };
-      const finalMessages = [...updatedCurrentMessages, fallbackMsg];
-      const finalMap = {
-        ...messagesMap,
-        [activeSessionId]: finalMessages,
-      };
-      setMessagesMap(finalMap);
-      saveChatsToStorage(updatedSessions, finalMap);
+      setMessagesMap((prev) => {
+        const list = prev[activeSession] || [];
+        const updatedList = list.map((m) => {
+          if (m.id === assistantMsgId || (m.role === "assistant" && m.isStreaming)) {
+            return {
+              ...m,
+              content: errorContent,
+              isStreaming: false,
+              isError: !isAbort && !accumulatedText,
+              sources: accumulatedSources.length > 0 ? accumulatedSources : m.sources,
+            };
+          }
+          return m;
+        });
+
+        const seen = new Set<string>();
+        const sanitized = updatedList.filter((m) => {
+          if (!m || !m.id || seen.has(m.id)) return false;
+          seen.add(m.id);
+          if (m.role === "assistant" && !m.content?.trim() && !m.visualBrief && (!m.images || m.images.length === 0) && !m.websiteHtml) {
+            return false;
+          }
+          return true;
+        });
+
+        const nextMap = {
+          ...prev,
+          [activeSession]: sanitized,
+        };
+        saveChatsToStorage(updatedSessions, nextMap);
+        return nextMap;
+      });
     } finally {
       setIsAiThinking(false);
+      isSendingRef.current = false;
       abortControllerRef.current = null;
     }
   };
 
   const handleSendMessage = () => {
+    if (isSendingRef.current || isAiThinking) return;
     executeSendMessage(inputText);
   };
 
   // Regenerate last assistant response
   const handleRegenerate = () => {
-    if (isAiThinking || currentMessages.length === 0) return;
+    if (isAiThinking || isSendingRef.current || currentMessages.length === 0) return;
 
     // Find the last user message
     let lastUserIndex = -1;
@@ -1195,31 +1369,41 @@ export function ChatDashboard({
     const lastUserMessage = currentMessages[lastUserIndex];
     // Remove messages after this user message
     const trimmedMessages = currentMessages.slice(0, lastUserIndex);
-    const newMap = {
-      ...messagesMap,
+    setMessagesMap((prev) => ({
+      ...prev,
       [activeSessionId]: trimmedMessages,
-    };
-    setMessagesMap(newMap);
+    }));
 
-    // Re-execute user message
+    // Re-execute user message freshly
     executeSendMessage(lastUserMessage.content, lastUserMessage.attachments);
   };
 
   // Retry a specific failed message
   const handleRetry = (msg: Message) => {
-    if (isAiThinking) return;
-    // Remove the error assistant bubble
-    const filtered = currentMessages.filter((m) => m.id !== msg.id);
-    setMessagesMap({
-      ...messagesMap,
-      [activeSessionId]: filtered,
-    });
+    if (isAiThinking || isSendingRef.current) return;
+    const msgIdx = currentMessages.findIndex((m) => m.id === msg.id);
+    if (msgIdx === -1) return;
 
-    // Re-run last user message
-    const lastUserMsg = [...filtered].reverse().find((m) => m.role === "user");
-    if (lastUserMsg) {
-      executeSendMessage(lastUserMsg.content, lastUserMsg.attachments);
+    // Find preceding user message
+    let userMsgToRetry: Message | null = null;
+    let sliceEnd = msgIdx;
+    for (let i = msgIdx - 1; i >= 0; i--) {
+      if (currentMessages[i].role === "user") {
+        userMsgToRetry = currentMessages[i];
+        sliceEnd = i;
+        break;
+      }
     }
+
+    if (!userMsgToRetry) return;
+
+    const trimmed = currentMessages.slice(0, sliceEnd);
+    setMessagesMap((prev) => ({
+      ...prev,
+      [activeSessionId]: trimmed,
+    }));
+
+    executeSendMessage(userMsgToRetry.content, userMsgToRetry.attachments);
   };
 
   // Format message time
@@ -1667,9 +1851,41 @@ export function ChatDashboard({
 
                     {/* Main Markdown & Code Body */}
                     <div className="relative">
-                      <MarkdownRenderer content={msg.content} isRTL={isRtl} />
-                      {msg.isStreaming && (
-                        <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle rounded-sm" />
+                      {msg.isStreaming && !msg.content ? (
+                        <div className="space-y-2.5 py-1">
+                          {/* Gradient Shimmer Bar */}
+                          <div className="w-48 h-2 rounded-full thinking-glow overflow-hidden relative">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent thinking-sweep" />
+                          </div>
+                          {/* Pulsating Dots & Status */}
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
+                              <div className="flex gap-1 items-center">
+                                <span className="w-2 h-2 rounded-full bg-cyan-400 thinking-dot-1" />
+                                <span className="w-2 h-2 rounded-full bg-teal-400 thinking-dot-2" />
+                                <span className="w-2 h-2 rounded-full bg-indigo-400 thinking-dot-3" />
+                              </div>
+                              <span className="truncate">{msg.statusMessage || aiStatusMessage}</span>
+                            </div>
+
+                            {/* Stop Generation Button directly on active streaming message */}
+                            <button
+                              type="button"
+                              onClick={handleStopGeneration}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 hover:bg-red-800/60 border border-red-500/30 text-red-300 text-[11px] font-semibold cursor-pointer transition-colors"
+                            >
+                              <Square className="w-2.5 h-2.5 fill-red-400" />
+                              <span>Stop</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <MarkdownRenderer content={msg.content} isRTL={isRtl} />
+                          {msg.isStreaming && (
+                            <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle rounded-sm" />
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -1778,42 +1994,6 @@ export function ChatDashboard({
                 </div>
               );
             })
-          )}
-
-          {/* Colorful AI Thinking / Loading Animation Bubble */}
-          {isAiThinking && (
-            <div className="flex gap-3 max-w-3xl mr-auto animate-in fade-in-50 duration-200">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-cyan-500 to-teal-400 flex items-center justify-center text-black font-extrabold text-xs shrink-0 shadow-sm shadow-cyan-500/20">
-                <Sparkles className="w-4 h-4 text-black" />
-              </div>
-              <div className="rounded-2xl p-4 bg-[#141420] border border-[#242436] space-y-2.5 max-w-sm">
-                {/* Gradient Shimmer Bar */}
-                <div className="w-48 h-2 rounded-full thinking-glow overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent thinking-sweep" />
-                </div>
-                {/* Pulsating Dots & Status */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
-                    <div className="flex gap-1 items-center">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 thinking-dot-1" />
-                      <span className="w-2 h-2 rounded-full bg-teal-400 thinking-dot-2" />
-                      <span className="w-2 h-2 rounded-full bg-indigo-400 thinking-dot-3" />
-                    </div>
-                    <span className="truncate">{aiStatusMessage}</span>
-                  </div>
-
-                  {/* Stop Generation Button on thinking bubble */}
-                  <button
-                    type="button"
-                    onClick={handleStopGeneration}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 hover:bg-red-800/60 border border-red-500/30 text-red-300 text-[11px] font-semibold cursor-pointer transition-colors"
-                  >
-                    <Square className="w-2.5 h-2.5 fill-red-400" />
-                    <span>Stop</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           )}
 
           <div ref={messagesEndRef} />
@@ -1998,8 +2178,11 @@ export function ChatDashboard({
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
+                    if ((e.nativeEvent as any)?.isComposing) return;
                     e.preventDefault();
-                    handleSendMessage();
+                    if (!isSendingRef.current && !isAiThinking) {
+                      handleSendMessage();
+                    }
                   }
                 }}
                 placeholder={

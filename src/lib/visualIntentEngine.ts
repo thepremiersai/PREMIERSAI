@@ -254,11 +254,11 @@ export function extractAccurateBrandName(rawText: string, detectedCategory: stri
   else if (lowerTrimmed.includes("hoodie") || (lowerTrimmed.includes("character") && lowerTrimmed.includes("black"))) fallbackName = "SHADOW CYPHER";
   else if (lowerTrimmed.includes("futuristic city") || lowerTrimmed.includes("cyberpunk city") || lowerTrimmed.includes("city")) fallbackName = "NEO TOKYO 2099";
   else if (lowerTrimmed.includes("ai revolution")) fallbackName = "AI REVOLUTION";
-  else if (lowerTrimmed.includes("website hero") || lowerTrimmed.includes("hero image") || lowerTrimmed.includes("hero graphic")) fallbackName = "NEXUS INTELLIGENCE";
+  else if (lowerTrimmed.includes("website hero") || lowerTrimmed.includes("hero image") || lowerTrimmed.includes("hero graphic")) fallbackName = "PREMIERS INTELLIGENCE";
   else if (detectedCategory === "gaming") fallbackName = "APEX ESPORTS";
   else if (detectedCategory === "automotive") fallbackName = "ZAID MOTORS";
   else if (detectedCategory === "luxury") fallbackName = "MAISON NOIR";
-  else if (detectedCategory === "tech") fallbackName = "NEXUS TECH";
+  else if (detectedCategory === "tech") fallbackName = "PREMIERS TECH";
   else if (detectedCategory === "creator") fallbackName = "CREATOR STUDIO";
 
   return { brandName: fallbackName, initials: deriveInitials(fallbackName) };
@@ -664,6 +664,63 @@ export function detectCategory(text: string): {
     };
   }
 
+  if (
+    lower.includes("city") ||
+    lower.includes("futuristic city") ||
+    lower.includes("cyberpunk") ||
+    lower.includes("shehar") ||
+    lower.includes("sci-fi") ||
+    lower.includes("scifi")
+  ) {
+    return {
+      category: "tech",
+      industry: "Futuristic & Sci-Fi Concept Art",
+      theme: "cyber_city",
+    };
+  }
+
+  if (
+    lower.includes("restaurant") ||
+    lower.includes("food") ||
+    lower.includes("cafe") ||
+    lower.includes("burger") ||
+    lower.includes("pizza") ||
+    lower.includes("dining")
+  ) {
+    return {
+      category: "food",
+      industry: "Hospitality & Culinary Arts",
+      theme: "food",
+    };
+  }
+
+  if (
+    lower.includes("landscape") ||
+    lower.includes("nature") ||
+    lower.includes("mountain") ||
+    lower.includes("sunset") ||
+    lower.includes("ocean")
+  ) {
+    return {
+      category: "general",
+      industry: "Natural Landscapes & Scenic Environments",
+      theme: "landscape",
+    };
+  }
+
+  if (
+    lower.includes("character") ||
+    lower.includes("hoodie") ||
+    lower.includes("cartoon") ||
+    lower.includes("anime")
+  ) {
+    return {
+      category: "creator",
+      industry: "Character Art & Digital Illustration",
+      theme: "anime",
+    };
+  }
+
   return {
     category: "corporate",
     industry: "Enterprise & Modern Business",
@@ -910,8 +967,17 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
     lower.includes("reel");
 
   const isGenericImageTrigger =
-    lower.includes("wallpaper") ||
+    lower.includes("image banao") ||
+    lower.includes("image bana") ||
+    lower.includes("image chahiye") ||
+    lower.includes("tasveer banao") ||
+    lower.includes("tasveer bana") ||
     lower.includes("tasveer") ||
+    lower.includes("photo banao") ||
+    lower.includes("photo bana") ||
+    lower.includes("picture banao") ||
+    lower.includes("picture bana") ||
+    lower.includes("wallpaper") ||
     lower.includes("تصویر") ||
     lower.includes("artwork") ||
     lower.includes("drawing") ||
@@ -923,7 +989,8 @@ export function parseVisualIntent(rawText: string): VisualIntentResult | null {
     lower.includes("fantasy") ||
     lower.includes("illustration") ||
     /\b(draw|sketch|paint|illustrate|visualize|render)\b/i.test(lower) ||
-    /\b(create|generate|make|design)\s+(?:an?|the|some)?\s*(?:futuristic|cyberpunk|photorealistic|scenic|3d|modern|minimal|luxury)?\s*(?:image|picture|photo|wallpaper|artwork|render|visual)/i.test(lower);
+    /\b(create|generate|make|design)\s+(?:an?|the|some)?\s*(?:futuristic|cyberpunk|photorealistic|scenic|3d|modern|minimal|luxury|realistic)?\s*(?:image|picture|photo|wallpaper|artwork|render|visual)/i.test(lower) ||
+    /\b(?:ek|aik|1)\s+(?:futuristic|scenic|realistic|cyberpunk)?\s*(?:city|shehar|tasveer|image|picture|photo)\b/i.test(lower);
 
   const isHeroTrigger =
     lower.includes("hero") ||

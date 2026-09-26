@@ -47,6 +47,7 @@ export interface Message {
   attachments?: Attachment[];
   visualBrief?: any;
   isError?: boolean;
+  statusMessage?: string;
 }
 
 export interface ChatSession {
