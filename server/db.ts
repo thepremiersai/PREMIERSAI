@@ -637,6 +637,8 @@ export function initDatabase() {
     "ALTER TABLE chat_messages ADD COLUMN previous_versions_json TEXT;",
     "ALTER TABLE chat_messages ADD COLUMN is_saved INTEGER DEFAULT 0;",
     "ALTER TABLE chat_messages ADD COLUMN sources_json TEXT;",
+    "ALTER TABLE chat_messages ADD COLUMN images_json TEXT;",
+    "ALTER TABLE chat_messages ADD COLUMN website_html TEXT;",
     "ALTER TABLE users ADD COLUMN suspended INTEGER DEFAULT 0;",
     "ALTER TABLE users ADD COLUMN permissions_json TEXT;",
     "ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0;",

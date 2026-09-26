@@ -215,3 +215,26 @@ Include camera lens, lighting setups, and composition instructions. Output JSON 
     res.status(500).json({ error: "Failed to generate product showcase." });
   }
 });
+
+// UNIVERSAL IMAGE GENERATION & EDITING ENDPOINT
+mediaRouter.post("/generate-image", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { prompt, imageBase64 } = req.body;
+    if (!prompt && !imageBase64) {
+      res.status(400).json({ error: "Prompt or image is required for visual generation." });
+      return;
+    }
+
+    const { classifyUserIntent } = await import("../services/intentRouter");
+    const { generateServerVisualAsset } = await import("../services/visualEngine");
+
+    const classification = classifyUserIntent(prompt || "image", { detectedLanguage: "English", code: "en", isRTL: false }, !!imageBase64);
+    const result = await generateServerVisualAsset(classification, prompt || "image", imageBase64);
+
+    if (req.user) recordUsageMetric(req.user.id, "ai_query", 1);
+    res.json(result);
+  } catch (error: any) {
+    console.error("Failed in /api/media/generate-image:", error);
+    res.status(500).json({ error: "Failed to generate visual asset." });
+  }
+});

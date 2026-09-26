@@ -268,187 +268,11 @@ export function isFactCheckQuery(text: string): boolean {
 
 /**
  * Resilient, multi-dialect contextual fallback generator.
+ * Directly synthesizes factual and natural answers without robotic templates.
  */
 export function generateFallbackResponse(userText: string, detection: any): string {
-  const isUrdu = detection.detectedLanguage === "Urdu";
-  const isRomanUrdu = detection.detectedLanguage === "Roman Urdu";
-  const isArabic = detection.detectedLanguage === "Arabic";
-  const isFrench = detection.detectedLanguage === "French";
-  const isSpanish = detection.detectedLanguage === "Spanish";
-  const isGerman = detection.detectedLanguage === "German";
-  const isChinese = detection.detectedLanguage === "Chinese";
-
-  const lower = userText.toLowerCase();
-
-  if (lower.includes("code") || lower.includes("python") || lower.includes("javascript") || lower.includes("function") || lower.includes("react")) {
-    return `### Solution & Implementation
-
-Here is a clean, production-grade implementation for your request:
-
-\`\`\`typescript
-/**
- * Global Intelligence Platform — Task Implementation
- * Query: ${userText.slice(0, 60)}
- */
-export function executeTask(inputData?: any) {
-  try {
-    console.log("Processing request with precision:", inputData);
-    return {
-      status: "success",
-      timestamp: Date.now(),
-      data: inputData || "Task executed successfully",
-    };
-  } catch (error) {
-    console.error("Execution error:", error);
-    throw error;
-  }
-}
-\`\`\`
-
-**Key Features:**
-- Complete type safety and defensive error handling.
-- Modular architecture ready for immediate integration.`;
-  } else if (lower.includes("logo") || lower.includes("company") || lower.includes("brand") || lower.includes("design") || lower.includes("naming") || lower.includes("naam")) {
-    const { brandName, isGaming, isAutomotive, isLuxury } = extractServerBrandName(userText);
-    if (isGaming) {
-      if (isRomanUrdu) {
-        return `### 🎮 Professional Gaming & Esports Visual Identity: **${brandName}**
-
-Aap ke gaming brand **${brandName}** ke liye high-definition competitive esports crest tayar kiya gaya hai:
-
-1. **Esports Warrior Shield & Mascot Silhouette**:
-   - Dynamic angular crest aur cyber-armor visor with piercing glowing cyan eyes.
-   - Profile-picture size (Discord, YouTube Gaming, Steam) par 100% optical balance aur clear silhouette.
-
-2. **Typography & Brand Preservation**:
-   - Exact brand name **"${brandName}"** ko 3D extruded metallic lettering mein render kiya gaya hai.
-   - Zero generic font usage; custom esports display kerning with chamfered cuts.
-
-3. **Color Harmony & Export Readiness**:
-   - Competitive Crimson Fire & Ember Gold with Cyan eye illumination.
-   - Studio Dark aur Transparent PNG dono formats preview aur download ke liye tayar hain!
-
-Aap ka custom gaming visual asset aur mini brand brief neeche render ho chuka hai!`;
-      } else {
-        return `### 🎮 Professional Gaming & Esports Brand Identity: **${brandName}**
-
-Here is a world-class competitive esports visual identity engineered specifically for **${brandName}**:
-
-1. **Esports Silhouette & Dynamic Crest**:
-   - Angular battle-ready tournament shield featuring an original cyber-warrior mask with piercing cyan specular illumination.
-   - Engineered for instant recognition at profile-avatar dimensions (Discord, YouTube Gaming, Steam, Twitch).
-
-2. **Strict Brand Name Preservation**:
-   - The exact brand name **"${brandName}"** has been preserved with zero extraneous words.
-   - High-impact 3D extruded lettering with faceted metallic chamfers.
-
-3. **Color Direction & Transparent Asset**:
-   - Competitive fire orange and crimson against deep titanium slate.
-   - Both high-contrast studio presentation and 100% transparent PNG modes are ready to download below.`;
-      }
-    }
-
-    if (isAutomotive || isLuxury) {
-      if (isRomanUrdu) {
-        return `### 🏎️ Luxury & High-Performance Marque Identity: **${brandName}**
-
-Aap ke marque **${brandName}** ke liye aerodynamic luxury identity concept tayar kiya gaya hai:
-
-1. **Aerodynamic Winged Crest**:
-   - Swept-wing precision emblem jo velocity aur mechanical mastery ko symbolize karta hai.
-   - Steering wheel badge aur showroom signage ke liye mathematically balanced proportions.
-
-2. **Typography & Styling**:
-   - Forward-slanted italicized precision grotesque typeface with high contrast.
-   - Racing Crimson aur Brushed Platinum Silver accents.
-
-Aap ka brand asset aur vector specifications neeche tayar hain!`;
-      } else {
-        return `### 🏎️ Luxury & High-Performance Marque Identity: **${brandName}**
-
-Here is an executive-grade automotive brand identity engineered for **${brandName}**:
-
-1. **Aerodynamic Swept-Wing Marque**:
-   - Precision chrome emblem flanked by symmetrical swept wings symbolizing velocity and engineering poise.
-   - Proportioned for vehicle grilles, steering wheel hubs, and digital interfaces.
-
-2. **Typography & Color Harmony**:
-   - Dynamic forward-slanted precision grotesque with high optical clarity.
-   - Racing Crimson and Platinum Silver against carbon-weave dark tones.
-
-Your high-definition brand asset has been rendered below.`;
-      }
-    }
-
-    if (isRomanUrdu) {
-      return `### 🏢 Modern Brand Identity & Vector Architecture: **${brandName}**
-
-Aap ke enterprise **${brandName}** ke liye world-class visual identity architecture tayar ki gayi hai:
-
-1. **Vector Geometry & Negative Space**:
-   - Interlocking precision monogram mark jo innovation aur stability ko represent karta hai.
-   - Har scale par optical clarity aur balance.
-
-2. **Color Palette & Typography**:
-   - Emerald Teal (#00d4a0) aur Titanium Dark Slate.
-   - Plus Jakarta Sans Bold typography with balanced tracking.
-
-Aap ka brand asset aur mini brief neeche tayar hai!`;
-    } else {
-      return `### 🏢 Modern Brand Identity & Vector Architecture: **${brandName}**
-
-Here is a world-class visual identity architecture engineered for **${brandName}**:
-
-1. **Geometric Vector Mark**:
-   - Interlocking precision delta nodes symbolizing intelligence, structural stability, and forward momentum.
-   - Balanced negative space passing all optical clarity benchmarks.
-
-2. **Color Palette & Typography**:
-   - High-Contrast Emerald Accent (#00d4a0) with Titanium Dark Slate.
-   - Verified Brand Identifier with ultra-sharp kerning.
-
-Your high-definition corporate brand visual has been rendered below.`;
-    }
-  } else if (isUrdu) {
-    return `وعلیکم السلام! میں آپ کا ذہین ترین کثیر لسانی AI معاون ہوں۔ آپ کا پیغام "${userText}" موصول ہوا ہے۔
-
-میں آپ کے لیے درج ذیل خدمات پیش کرنے کے لیے ہمہ وقت تیار ہوں:
-1. **کثیر لسانی گفتگو**: اردو، رومن اردو، عربی، انگریزی اور دیگر تمام عالمی زبانوں میں مکمل روانی۔
-2. **پیشہ ورانہ ڈیزائننگ اور لوگوز**: کارپوریٹ برانڈنگ اور 4K بصری آرٹ۔
-3. **کوڈنگ اور لائیو ایپلی کیشنز**: ری ایکٹ، ٹائپ اسکرپٹ اور پائتھون میں مکمل اور محفوظ حل۔
-4. **تحقیق اور لائیو ویب سرچ**: تفصیلی اور مستند معلومات برائے تحقیق۔
-
-آپ اس بارے میں مزید کیا بنوانا چاہتے ہیں؟`;
-  } else if (isRomanUrdu) {
-    return `Salam! Main aap ka universal AI assistant hoon. Aap ka sawal "${userText}" mujhe mil gaya hai.
-
-Main aap ki in cheezon mein madad kar sakta hoon:
-- **Company Logos & Brand Identity**: Modern marks, emblems aur 4K visual art.
-- **Web Development & Live Coding**: Interactive dynamic sandboxes aur working code.
-- **Real-time Web Research**: Live web search aur factual verification.
-- **Urdu & Roman Urdu Chat**: Bilkul aam faham aur dostana andaz mein guftagu.
-
-Bataiye agay kya karna chahte hain?`;
-  } else if (isArabic) {
-    return `مرحباً بك! أنا مساعدك الذكي الشامل. تم استلام طلبك: "${userText}".
-
-أنا على أتم الاستعداد لمساعدتك في:
-- **تصميم شعارات الشركات والهويات البصرية الاحترافية**.
-- **تطوير التطبيقات وكتابة الأكواد البرمجية الموثوقة**.
-- **البحث المباشر والتحقق من الحقائق**.
-
-كيف ترغب في المتابعة؟`;
-  } else if (isFrench) {
-    return `Bonjour ! J'ai bien traité votre demande concernant : "${userText}". Je suis disponible pour vous assister dans le développement web, l'analyse en temps réel et la rédaction technique.`;
-  } else if (isSpanish) {
-    return `¡Hola! He procesado su consulta: "${userText}". Estoy a su disposición para ayudarle con programación, búsqueda en tiempo real y asistencia técnica.`;
-  } else if (isGerman) {
-    return `Hallo! Ihre Anfrage zu "${userText}" wurde verarbeitet. Ich stehe bereit für Programmierung, Echtzeit-Recherche und mehrsprachige Assistenz.`;
-  } else if (isChinese) {
-    return `您好！已分析您的需求：“${userText}”。我能够协助您完成代码编写、多语言翻译、实时搜索及专业技术咨询。`;
-  } else {
-    return `I am PREMIERS AI. How can I assist you with your research, engineering, or creative goals?`;
-  }
+  const engineResult = generateEngineResponse(userText, detection);
+  return engineResult.content;
 }
 
 export const MODE_INSTRUCTIONS: Record<string, string> = {
@@ -470,12 +294,14 @@ You are ONE single unified intelligence engine. The user experiences only PREMIE
 
 CORE PRINCIPLES & RESPONSE STYLE:
 1. NATURAL, DIRECT ANSWERS WITHOUT FORCED TEMPLATES:
-- NEVER use the generic template "### Analysis & Solution / Core Understanding / Key Recommendations" unless the user explicitly requested a software architecture review.
+- STRICT PROHIBITION: ABSOLUTELY NEVER use the template "### Analysis & Solution", "Core Understanding", "Key Recommendations", "How would you like to expand on this?", "modular practices", "architectural considerations" unless the user explicitly requested a software architecture review.
 - NEVER start answers with "Thank you for your prompt" or generic robotic filler.
-- NEVER treat ordinary factual or general knowledge questions as coding/software architecture requests.
-- For factual, general knowledge, or simple questions (e.g. "How many countries are there in the world?", "Pakistan ka capital kya hai?"), answer directly, accurately, and naturally in the user's language.
+- NEVER treat ordinary factual, conversational, or general knowledge questions as coding/software architecture requests.
+- For factual, general knowledge, or simple questions (e.g. "How many countries are there in the world?", "ISS DUNIYA MEIN KITNI COUNTRIES HAIN", "Pakistan ka capital kya hai?"), answer DIRECTLY, accurately, and naturally in the user's language. Give the direct factual answer in the very first sentence.
 - For calculations (e.g. "2 + 2 kitna hota hai?", "What is 25 * 48?"), give the exact answer directly.
-- For definitions and science (e.g. "Explain photosynthesis in easy words", "HTML kya hai?"), provide clear, intuitive, and accessible explanations.
+- For definitions and science (e.g. "Explain photosynthesis in easy words", "HTML kya hai?"), provide clear, intuitive, and accessible explanations without technical templates.
+- For translations, translate directly without commentary.
+- For writing requests, write the content directly.
 - For coding requests, provide clean, robust, modern, production-grade code with TypeScript/language best practices.
 
 2. GLOBAL MULTILINGUAL CAPABILITY:
@@ -1135,6 +961,89 @@ chatRouter.post("/stream", chatLimiter, optionalAuth, async (req: Request, res: 
     detectedLanguage: detection.detectedLanguage
   })}\n\n`);
 
+  // Direct Execution for Visual / Image Generation Requests
+  if (classification.isVisual) {
+    res.write(`data: ${JSON.stringify({
+      type: "status",
+      step: "generating_visual",
+      message: `Generating high-resolution ${classification.intent.replace(/_/g, " ").toLowerCase()}...`
+    })}\n\n`);
+
+    try {
+      const { generateServerVisualAsset } = await import("../services/visualEngine");
+      const attachedImage = Array.isArray(attachments) && attachments.find((a: any) => a.data && a.type?.startsWith("image/"));
+      const visualResult = await generateServerVisualAsset(classification, userText, attachedImage ? attachedImage.data : undefined);
+
+      // Emit image event to stream
+      res.write(`data: ${JSON.stringify({
+        type: "image",
+        image: visualResult.imageUrl,
+        title: visualResult.title,
+        category: visualResult.category,
+        aspectRatio: visualResult.aspectRatio,
+      })}\n\n`);
+
+      // Determine a short, natural 1-2 sentence caption
+      let caption = "";
+      if (detection.detectedLanguage === "Urdu") {
+        caption = `یہ لیجیے، **${visualResult.title}** کے لیے آپ کا تیار کردہ ${visualResult.category}۔`;
+      } else if (detection.detectedLanguage === "Roman Urdu" || /\b(hai|hain|kya|banao|ka|ki|ke|dein)\b/i.test(userText)) {
+        caption = `Yeh lijiye, **${visualResult.title}** ke liye aap ka professional ${visualResult.category} tayar hai.`;
+      } else {
+        caption = `Here is your ${visualResult.category.toLowerCase()} for **${visualResult.title}**.`;
+      }
+
+      // Stream out the short caption
+      const words = caption.split(" ");
+      for (let i = 0; i < words.length; i += 2) {
+        if (clientDisconnected) break;
+        const chunk = words.slice(i, i + 2).join(" ") + (i + 2 < words.length ? " " : "");
+        res.write(`data: ${JSON.stringify({ type: "chunk", text: chunk })}\n\n`);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+
+      const asstMsgId = clientAssistantMessageId || ("msg_asst_" + Date.now());
+      if (sessionId) {
+        try {
+          db.prepare(`
+            INSERT OR REPLACE INTO chat_messages (
+              id, session_id, role, content, detected_language,
+              language_code, is_rtl, images_json, created_at
+            ) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, ?)
+          `).run(
+            asstMsgId,
+            sessionId,
+            caption,
+            detection.detectedLanguage,
+            detection.code,
+            detection.isRTL ? 1 : 0,
+            JSON.stringify([visualResult.imageUrl]),
+            Date.now()
+          );
+        } catch (asstErr: any) {
+          console.warn("Could not persist assistant visual message:", asstErr?.message);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({
+        type: "done",
+        messageId: asstMsgId,
+        content: caption,
+        images: [visualResult.imageUrl],
+        sources: [],
+        searchQueries: [],
+        detectedLanguage: detection.detectedLanguage,
+        isRTL: detection.isRTL,
+        languageCode: detection.code,
+        sessionId: sessionId || null,
+      })}\n\n`);
+      res.end();
+      return;
+    } catch (vErr: any) {
+      console.warn("Visual generation stream error:", vErr?.message);
+    }
+  }
+
   if (webSearchNeeded) {
     res.write(`data: ${JSON.stringify({
       type: "status",
@@ -1409,10 +1318,84 @@ chatRouter.post("/", chatLimiter, optionalAuth, async (req: Request, res: Respon
       }
     }
 
-    // Dynamic system instruction tailoring with Mode
-    let tailoredInstruction = SYSTEM_INSTRUCTION;
-    const selectedMode = mode && MODE_INSTRUCTIONS[mode] ? mode : "general";
-    tailoredInstruction += `\n\nCURRENT SPECIALIZED CONVERSATION MODE: [${selectedMode.toUpperCase()}]\n${MODE_INSTRUCTIONS[selectedMode]}`;
+    // Direct Execution for Visual / Image Generation Requests in non-streaming endpoint
+    if (classification.isVisual) {
+      try {
+        const { generateServerVisualAsset } = await import("../services/visualEngine");
+        const attachedImage = Array.isArray(attachments) && attachments.find((a: any) => a.data && a.type?.startsWith("image/"));
+        const visualResult = await generateServerVisualAsset(classification, userText, attachedImage ? attachedImage.data : undefined);
+
+        let caption = "";
+        if (detection.detectedLanguage === "Urdu") {
+          caption = `یہ لیجیے، **${visualResult.title}** کے لیے آپ کا تیار کردہ ${visualResult.category}۔`;
+        } else if (detection.detectedLanguage === "Roman Urdu" || /\b(hai|hain|kya|banao|ka|ki|ke|dein)\b/i.test(userText)) {
+          caption = `Yeh lijiye, **${visualResult.title}** ke liye aap ka professional ${visualResult.category} tayar hai.`;
+        } else {
+          caption = `Here is your ${visualResult.category.toLowerCase()} for **${visualResult.title}**.`;
+        }
+
+        const asstMsgId = clientAssistantMessageId || ("msg_asst_" + Date.now());
+        if (sessionId) {
+          try {
+            db.prepare(`
+              INSERT OR REPLACE INTO chat_messages (
+                id, session_id, role, content, detected_language,
+                language_code, is_rtl, images_json, created_at
+              ) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, ?)
+            `).run(
+              asstMsgId,
+              sessionId,
+              caption,
+              detection.detectedLanguage,
+              detection.code,
+              detection.isRTL ? 1 : 0,
+              JSON.stringify([visualResult.imageUrl]),
+              Date.now()
+            );
+          } catch (asstErr: any) {
+            console.warn("Could not persist assistant visual message:", asstErr?.message);
+          }
+        }
+
+        res.json({
+          content: caption,
+          images: [visualResult.imageUrl],
+          detectedLanguage: detection.detectedLanguage,
+          isRTL: detection.isRTL,
+          script: detection.script,
+          languageCode: detection.code,
+          messageId: asstMsgId,
+          sessionId: sessionId || null,
+          sources: [],
+          searchQueries: [],
+        });
+        return;
+      } catch (vErr: any) {
+        console.warn("Visual generation error in non-streaming:", vErr?.message);
+      }
+    }
+
+    // Dynamic system instruction tailoring with Mode & Strict Intent Routing
+    let tailoredInstruction = `${SYSTEM_INSTRUCTION}
+
+DETECTED INTENT: [${classification.intent}]
+${classification.intent === "FACTUAL_QUESTION" || classification.intent === "GENERAL_KNOWLEDGE" ? `DIRECT FACTUAL ANSWER MANDATE:
+- The user is asking a factual or general knowledge question (e.g., number of countries, capitals, geography, science facts).
+- Answer DIRECTLY, ACCURATELY, and CONCISELY in the user's language.
+- DO NOT produce code.
+- DO NOT produce an "Analysis & Solution" or architectural recommendation plan.
+- DO NOT recommend modular practices or software implementation.` : ""}
+${classification.intent === "MATH" ? `DIRECT CALCULATION MANDATE:
+- Compute the mathematical calculation and give the direct numerical answer immediately.` : ""}
+${classification.intent === "EDUCATION" || classification.intent === "SCIENCE" ? `SIMPLE INTUITIVE EXPLANATION MANDATE:
+- Explain the concept clearly, simply, and accessibly in everyday words without corporate templates or software architecture.` : ""}
+${classification.intent === "TRANSLATION" ? `DIRECT TRANSLATION MANDATE:
+- Translate the requested text accurately and naturally into the target language without meta-commentary.` : ""}
+${classification.intent === "WRITING" || classification.intent === "REWRITING" || classification.intent === "SUMMARIZATION" ? `DIRECT WRITING MANDATE:
+- Provide the written, rewritten, or summarized content directly with high literary or persuasive quality.` : ""}
+
+CURRENT SPECIALIZED CONVERSATION MODE: [${(mode && MODE_INSTRUCTIONS[mode] ? mode : "general").toUpperCase()}]
+${MODE_INSTRUCTIONS[mode && MODE_INSTRUCTIONS[mode] ? mode : "general"]}`;
 
     if (targetLanguage && targetLanguage !== "auto") {
       tailoredInstruction += `\n\nUSER OVERRIDE: The user explicitly requested replies in: ${targetLanguage}. You MUST reply strictly in this requested language.`;

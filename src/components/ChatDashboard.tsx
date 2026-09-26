@@ -930,8 +930,8 @@ export function ChatDashboard({
         "favicon",
       ].includes(visualIntent.designType);
 
-    // Only logo types get the interactive BrandIdentityCard
-    const visualBriefData = isLogoType ? visualIntent : undefined;
+    // Direct image rendering without replacing with design options list
+    const visualBriefData = undefined;
 
     if (visualIntent && visualIntent.isVisualRequest) {
       const isGaming = visualIntent.style === "gaming" || visualIntent.category === "gaming";
@@ -1132,6 +1132,12 @@ export function ChatDashboard({
                     content: accumulatedText,
                     isStreaming: true,
                   }));
+                } else if (parsed.type === "image" && parsed.image) {
+                  generatedImage = parsed.image;
+                  updateAssistantMsg((m) => ({
+                    ...m,
+                    images: [parsed.image],
+                  }));
                 } else if (parsed.type === "status" && parsed.message) {
                   setAiStatusMessage(parsed.message);
                   updateAssistantMsg((m) => ({
@@ -1156,6 +1162,13 @@ export function ChatDashboard({
                 } else if (parsed.type === "done") {
                   if (parsed.content && !accumulatedText) {
                     accumulatedText = parsed.content;
+                  }
+                  if (parsed.images && parsed.images.length > 0) {
+                    generatedImage = parsed.images[0];
+                    updateAssistantMsg((m) => ({
+                      ...m,
+                      images: parsed.images,
+                    }));
                   }
                   if (parsed.detectedLanguage) detectedLang = parsed.detectedLanguage;
                   if (typeof parsed.isRTL === "boolean") isRtl = parsed.isRTL;
@@ -1202,15 +1215,16 @@ export function ChatDashboard({
         accumulatedText = fallbackData.content || "";
         detectedLang = fallbackData.detectedLanguage || "Multilingual";
         isRtl = fallbackData.isRTL ?? isTextRTL(accumulatedText);
+        if (fallbackData.images && fallbackData.images.length > 0) {
+          generatedImage = fallbackData.images[0];
+        }
         if (fallbackData.sources) accumulatedSources = fallbackData.sources;
         if (fallbackData.searchQueries) accumulatedQueries = fallbackData.searchQueries;
       }
 
-      // If creative graphic or dynamic website was generated, enrich content if text is brief
+      // Final content without forced templates
       let finalContent = accumulatedText;
-      if (creativeReq && !accumulatedText.includes(creativeReq.title)) {
-        finalContent = `### 🎨 ${creativeReq.title}\n\n${accumulatedText}\n\n*Your custom creative visual asset is rendered below. Click **Download PNG** to save:*`;
-      } else if (websiteReq && !accumulatedText.includes("Live Sandbox Online")) {
+      if (websiteReq && !accumulatedText.includes("Live Sandbox Online")) {
         finalContent = `### 💻 Full-Stack Interactive Web App: ${websiteReq.title}\n\n${accumulatedText}\n\n---\n⚡ **Interactive Live Preview & Code:**\nYou can test the functional application directly below or switch tabs to view the complete source code.`;
       }
 
